@@ -33,6 +33,7 @@ import { store }        from "./tools/store";
 import { search }       from "./tools/search";
 import { listProjects } from "./tools/projects";
 import { getSummary }   from "./tools/summary";
+import { initStorage }  from "../services/storage";
 import { logger }       from "../utils/logger";
 
 // ── Tool definitions ────────────────────────────────────────────────
@@ -162,22 +163,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolRes
 // ── Bootstrap: start server ─────────────────────
 async function main() {
   const STORAGE_MODE = (process.env.SYNQ_STORAGE_MODE || "docker").toLowerCase();
-  
-  if (STORAGE_MODE === "docker") {
-    const { connectMongo } = require("../services/mongo");
-    const { connectChroma } = require("../services/chroma");
-    const { connectNeo4j } = require("../services/neo4j");
-    try {
-      await connectMongo();
-      await connectChroma();
-      await connectNeo4j();
-    } catch (err) {
-      process.stderr.write(`[SYNQ MCP] Docker DB connection warning: ${err}\n`);
-    }
-  } else {
-    const { initSqlite } = require("../services/sqlite");
-    initSqlite();
-  }
+  await initStorage();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

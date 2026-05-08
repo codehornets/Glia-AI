@@ -1,3 +1,4 @@
+import { VALID_PLATFORMS } from "../utils/constants";
 import mongoose from "mongoose";
 import { logger } from "../utils/logger";
 
@@ -7,14 +8,14 @@ export async function connectMongo() {
     logger.success("MongoDB connected");
   } catch (err) {
     logger.error("MongoDB connection failed:", err);
-    process.exit(1);
+    throw err; // Don't process.exit(1) here anymore, let the caller handle it
   }
 }
 
 // ── Session schema ───────────────────────────────────────────────
 const sessionSchema = new mongoose.Schema({
   projectName: { type: String, required: true },
-  platform: { type: String, enum: ["claude", "chatgpt", "gemini", "deepseek", "grok", "copilot", "mistral", "mcp"] },
+  platform: { type: String, enum: VALID_PLATFORMS },
   summary: { type: String },          // cached project summary (avoids re-calling Groq on every read)
   tripleCount: { type: Number, default: 0 },
   // NEW: whether a full chat has been saved for RAG

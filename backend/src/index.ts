@@ -5,10 +5,8 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import path from "path";
 import fs from "fs";
-import { connectMongo } from "./services/mongo";
-import { connectNeo4j } from "./services/neo4j";
-import { connectChroma } from "./services/chroma";
 import { startWorker, clearAllJobs } from "./services/jobs";
+import { initStorage } from "./services/storage";
 import { logger } from "./utils/logger";
 import contextRoutes from "./routes/context";
 import graphRoutes from "./routes/graph";
@@ -19,24 +17,32 @@ dotenv.config();
 
 // ── #9: .env validation — fail fast with a clear message ──────────
 function validateEnv() {
-  // NEO4J, MONGO are always required
-  const required: Record<string, string> = {
-    NEO4J_URI:      "e.g. bolt://localhost:7687",
-    NEO4J_USER:     "e.g. neo4j",
-    NEO4J_PASSWORD: "Set in backend/.env",
-    MONGO_URI:      "e.g. mongodb://user:pass@localhost:27017/synqdb",
-  };
-  // GROQ_API_KEY is only required when GRAPH_BACKEND is set to 'groq'
-  // (or when Ollama is unavailable and auto-fallback kicks in at runtime)
-  if (process.env.GRAPH_BACKEND === "groq") {
-    required["GROQ_API_KEY"] = "Get a free key at https://console.groq.com";
-  }
-  const missing = Object.entries(required).filter(([k]) => !process.env[k]);
-  if (missing.length > 0) {
-    logger.error("Missing required environment variables:");
-    missing.forEach(([k, hint]) => logger.error(`  ${k} — ${hint}`));
-    logger.error("Copy backend/.env.example to backend/.env and fill in the values.");
-    process.exit(1);
+  const STORAGE_MODE = (process.env.SYNQ_STORAGE_MODE || "docker").toLowerCase();
+  
+  if (STORAGE_MODE === "docker") {
+    // NEO4J, MONGO are only required in Docker mode
+    const required: Record<string, string> = {
+      NEO4J_URI:      "e.g. bolt://localhost:7687",
+      NEO4J_USER:     "e.g. neo4j",
+      NEO4J_PASSWORD: "Set in backend/.env",
+      MONGO_URI:      "e.g. mongodb://user:pass@localhost:27017/synqdb",
+    };
+    if (process.env.GRAPH_BACKEND === "groq") {
+      required["GROQ_API_KEY"] = "Get a free key at https://console.groq.com";
+    }
+    const missing = Object.entries(required).filter(([k]) => !process.env[k]);
+    if (missing.length > 0) {
+      logger.error("Missing required environment variables for DOCKER mode:");
+      missing.forEach(([k, hint]) => logger.error(`  ${k} — ${hint}`));
+      logger.error("Set SYNQ_STORAGE_MODE=sqlite to use Zero-Docker mode instead.");
+      process.exit(1);
+    }
+  } else {
+    // SQLite mode validation (minimal)
+    if (process.env.GRAPH_BACKEND === "groq" && !process.env.GROQ_API_KEY) {
+      logger.error("Missing GROQ_API_KEY for graph extraction.");
+      process.exit(1);
+    }
   }
 }
 validateEnv();
@@ -188,9 +194,7 @@ app.post("/api/jobs/clear", async (req, res) => {
 
 async function start() {
   try {
-    await connectMongo();
-    await connectNeo4j();
-    await connectChroma(); // non-fatal if down
+    await initStorage();
     
     // Start background job worker for extraction tasks
     await startWorker();

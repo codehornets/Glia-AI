@@ -8,7 +8,7 @@ import { isValidObjectId } from "../utils/validators";
 
 const router = Router();
 
-const VALID_PLATFORMS = ["claude", "chatgpt", "gemini", "deepseek", "grok", "copilot", "mistral"];
+import { VALID_PLATFORMS } from "../utils/constants";
 
 // POST /api/context/ingest
 router.post("/ingest", async (req: Request, res: Response) => {

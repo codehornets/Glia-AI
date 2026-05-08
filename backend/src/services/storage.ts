@@ -189,15 +189,40 @@ let graphStore: IGraphStore;
 let vectorStore: IVectorStore;
 
 if (STORAGE_MODE === "sqlite") {
-  logger.info("Initializing Synq in SQLITE mode (Zero-Docker)");
   sessionStore = new SqliteSessionStore();
   graphStore = new SqliteGraphStore();
   vectorStore = new SqliteVectorStore();
 } else {
-  logger.info("Initializing Synq in DOCKER mode (Mongo/Neo4j/Chroma)");
   sessionStore = new DockerSessionStore();
   graphStore = new DockerGraphStore();
   vectorStore = new DockerVectorStore();
+}
+
+/**
+ * Unified storage initialization helper.
+ * Handles conditional connection to Mongo/Neo4j/Chroma or SQLite.
+ */
+export async function initStorage() {
+  if (STORAGE_MODE === "sqlite") {
+    logger.info("Initializing Synq in SQLITE mode (Zero-Docker)");
+    const { initSqlite } = require("./sqlite");
+    initSqlite();
+  } else {
+    logger.info("Initializing Synq in DOCKER mode (Mongo/Neo4j/Chroma)");
+    const { connectMongo } = require("./mongo");
+    const { connectNeo4j } = require("./neo4j");
+    const { connectChroma } = require("./chroma");
+
+    try {
+      await connectMongo();
+      await connectNeo4j();
+      await connectChroma(); // non-fatal if down, chroma handles internally
+    } catch (err) {
+      logger.error("Failed to connect to Docker databases:");
+      logger.error(err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  }
 }
 
 export * from "./storage.types";
