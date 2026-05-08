@@ -1,42 +1,48 @@
-import { sessionStore, graphStore, vectorStore } from "../../services/storage";
-import { scrubPII } from "../../utils/privacy";
-import { slidingWindowChunks } from "../../services/chunker";
-import { extractTriples } from "../../services/extractor";
+/**
+ * mcp/tools/store.ts — store_memory tool
+ * 
+ * Manually save a new fact or context block into a project.
+ */
 
-export async function storeMemory(
-  projectId: string,
-  text: string
+import { sessionStore, graphStore, vectorStore } from "../../services/storage";
+import { extractTriples } from "../../services/extractor";
+import { slidingWindowChunks } from "../../services/chunker";
+
+export async function store(
+  content: string,
+  project: string
 ): Promise<string> {
   try {
-    const session = await sessionStore.getSession(projectId);
+    const projectStr = String(project);
+    const session = await sessionStore.getSession(projectStr);
+
     if (!session) {
-      return `Error: Project ${projectId} not found.`;
+      return `Synq project ID "${projectStr}" not found. Use list_projects to see valid IDs.`;
     }
 
-    const cleanText = scrubPII(text);
-    
-    // 1. Store Chunks for RAG
-    const windowChunks = slidingWindowChunks(cleanText, projectId);
-    await vectorStore.storeChunks(windowChunks);
-
-    // 2. Extract and Store Triples for Graph
-    const { triples } = await extractTriples(cleanText);
+    // 1. Graph Extraction
+    const { triples } = await extractTriples(content);
     for (const t of triples) {
       await graphStore.saveTriple({
         ...t,
-        sessionId: projectId,
+        sessionId: projectStr,
         timestamp: new Date().toISOString()
       });
     }
 
-    // 3. Update Session Stats
-    await sessionStore.updateSession(projectId, {
+    // 2. Vector Storage
+    const chunks = slidingWindowChunks(content, projectStr);
+    await vectorStore.storeChunks(chunks);
+
+    // 3. Update Stats
+    await sessionStore.updateSession(projectStr, {
       tripleCount: (session.tripleCount || 0) + triples.length,
+      topicCount: (session.topicCount || 0) + chunks.length,
       updatedAt: new Date()
     });
 
-    return `Successfully stored memory in project "${session.projectName}".\n- Chunks stored: ${windowChunks.length}\n- Facts extracted: ${triples.length}`;
+    return `Successfully stored memory in project "${session.projectName}".\n- Triples extracted: ${triples.length}\n- Vector chunks saved: ${chunks.length}`;
   } catch (err: any) {
-    return `store_memory failed: ${err.message}`;
+    return `store_memory failed: ${err.message ?? String(err)}`;
   }
 }

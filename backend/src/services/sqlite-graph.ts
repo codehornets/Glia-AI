@@ -75,8 +75,4 @@ export class SqliteGraphStore implements IGraphStore {
 
     return { nodes: Array.from(nodes.values()), links };
   }
-
-  async deleteTriplesBySession(sessionId: string): Promise<void> {
-    this.db.prepare("DELETE FROM facts WHERE sessionId = ?").run(sessionId);
-  }
 }

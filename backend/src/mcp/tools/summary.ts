@@ -1,30 +1,29 @@
+/**
+ * mcp/tools/summary.ts — get_project_summary tool
+ * 
+ * Returns the auto-generated project summary and a count of stored facts.
+ */
+
 import { sessionStore, graphStore } from "../../services/storage";
 
-export async function getProjectSummary(
-  projectId: string
-): Promise<string> {
+export async function getSummary(project: string): Promise<string> {
   try {
-    const session = await sessionStore.getSession(projectId);
+    const projectStr = String(project);
+    const session = await sessionStore.getSession(projectStr);
+
     if (!session) {
-      return `Error: Project ${projectId} not found.`;
+      return `Synq project ID "${projectStr}" not found. Use list_projects to see valid IDs.`;
     }
 
-    if (session.summary) {
-      return `Project Summary for "${session.projectName}":\n\n${session.summary}`;
-    }
+    const triples = await graphStore.getTriplesBySession(projectStr);
 
-    // Fallback: list recent facts if no summary exists
-    const triples = await graphStore.getTriplesBySession(projectId);
-    if (triples.length === 0) {
-      return `Project "${session.projectName}" is empty. No summary or facts available.`;
-    }
-
-    const facts = triples.slice(-10).map(t => 
-      `- ${t.subject} (${t.subjectType}) --[${t.relation}]--> ${t.object} (${t.objectType})`
-    );
-
-    return `Project "${session.projectName}" (no summary available).\n\nRecent Facts:\n${facts.join("\n")}`;
+    let summary = session.summary || "No summary generated yet. Save a chat with the Synq extension to build knowledge.";
+    
+    return `Project: ${session.projectName} (${session.platform})\n` +
+           `Facts Stored: ${triples.length}\n` +
+           `Last Updated: ${new Date(session.updatedAt).toLocaleDateString()}\n\n` +
+           `Knowledge Summary:\n${summary}`;
   } catch (err: any) {
-    return `get_project_summary failed: ${err.message}`;
+    return `get_project_summary failed: ${err.message ?? String(err)}`;
   }
 }

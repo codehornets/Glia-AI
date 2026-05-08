@@ -1,135 +1,190 @@
+/**
+ * mcp/server.ts — SYNQ MCP Server (stdio transport)
+ *
+ * Transforms SYNQ into a universal memory layer accessible from any
+ * MCP-compatible AI tool: Claude Code, Cursor, Windsurf, Claude Desktop.
+ *
+ * Five tools exposed:
+ *   - recall_context      → retrieve relevant memory for a prompt
+ *   - store_memory        → save text to SYNQ long-term memory
+ *   - search_memory       → semantic search across all sessions
+ *   - list_projects       → list all saved project names
+ *   - get_project_summary → get knowledge graph summary for a project
+ *
+ * Updated: v1.4.2
+ */
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
-  CallToolRequestSchema,
   ListToolsRequestSchema,
+  CallToolRequestSchema,
+  type CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { logger } from "../utils/logger";
-import { sessionStore } from "../services/storage";
+import dotenv from "dotenv";
+import path from "path";
 
-// Import tool handlers
+// Load env — try both common locations
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../backend/.env") });
+
+import { recall }       from "./tools/recall";
+import { store }        from "./tools/store";
+import { search }       from "./tools/search";
 import { listProjects } from "./tools/projects";
-import { recallContext } from "./tools/recall";
-import { searchMemory } from "./tools/search";
-import { storeMemory } from "./tools/store";
-import { getProjectSummary } from "./tools/summary";
+import { getSummary }   from "./tools/summary";
+import { logger }       from "../utils/logger";
 
-const server = new Server(
+// ── Tool definitions ────────────────────────────────────────────────
+const TOOLS = [
   {
-    name: "synq",
-    version: "1.4.2",
+    name: "recall_context",
+    description:
+      "Retrieve the most relevant memory chunks for a given prompt. " +
+      "Returns sanitised chunks wrapped in <synq_retrieved_context> delimiters.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        prompt:  { type: "string",  description: "The current task or question" },
+        project: { type: "string",  description: "Project ID to scope the search (optional)" },
+        topN:    { type: "number",  description: "Max chunks to return (default 3, max 6)" },
+      },
+      required: ["prompt"],
+    },
   },
   {
-    capabilities: {
-      tools: {},
+    name: "store_memory",
+    description:
+      "Save text to SYNQ long-term memory. Stores in vector search and knowledge graph. " +
+      "Use after completing a task, making a decision, or discovering something important.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        text:    { type: "string", description: "Content to save" },
+        project: { type: "string", description: "Project ID to associate with" },
+      },
+      required: ["text", "project"],
     },
-  }
+  },
+  {
+    name: "search_memory",
+    description:
+      "Semantic search across all sessions and projects.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Natural language search query" },
+        topN:  { type: "number", description: "Max results (default 5)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "list_projects",
+    description: "List all project names and IDs stored in SYNQ memory.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "get_project_summary",
+    description:
+      "Get a structured knowledge-graph summary for a project.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        project: { type: "string", description: "Project ID" },
+      },
+      required: ["project"],
+    },
+  },
+];
+
+// ── Server setup ────────────────────────────────────────────────────
+const server = new Server(
+  { name: "synq-memory", version: "1.4.2" },
+  { capabilities: { tools: {} } }
 );
 
-/**
- * List available tools.
- */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "list_projects",
-        description: "List all Synq projects/sessions.",
-      },
-      {
-        name: "recall_context",
-        description: "Retrieve relevant context from a specific Synq project.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            projectId: { type: "string" },
-            query: { type: "string" },
-            topN: { type: "number", default: 5 },
-          },
-          required: ["projectId", "query"],
-        },
-      },
-      {
-        name: "search_memory",
-        description: "Search across all Synq projects using semantic search.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: { type: "string" },
-            topN: { type: "number", default: 5 },
-          },
-          required: ["query"],
-        },
-      },
-      {
-        name: "store_memory",
-        description: "Manually ingest information into a Synq project.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            projectId: { type: "string" },
-            text: { type: "string" },
-          },
-          required: ["projectId", "text"],
-        },
-      },
-      {
-        name: "get_project_summary",
-        description: "Get a structured knowledge summary of a Synq project.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            projectId: { type: "string" },
-          },
-          required: ["projectId"],
-        },
-      },
-    ],
-  };
-});
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
-/**
- * Handle tool calls.
- */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolResult> => {
+  const { name, arguments: args = {} } = req.params;
 
   try {
     switch (name) {
-      case "list_projects":
-        return { content: [{ type: "text", text: await listProjects() }] };
-      case "recall_context":
-        return { content: [{ type: "text", text: await recallContext(args?.projectId as string, args?.query as string, args?.topN as number) }] };
-      case "search_memory":
-        return { content: [{ type: "text", text: await searchMemory(args?.query as string, args?.topN as number) }] };
-      case "store_memory":
-        return { content: [{ type: "text", text: await storeMemory(args?.projectId as string, args?.text as string) }] };
-      case "get_project_summary":
-        return { content: [{ type: "text", text: await getProjectSummary(args?.projectId as string) }] };
+      case "recall_context": {
+        const result = await recall(
+          args.prompt as string,
+          args.project as string,
+          args.topN as number | undefined
+        );
+        return { content: [{ type: "text", text: result }] };
+      }
+      case "store_memory": {
+        const result = await store(
+          args.text as string,
+          args.project as string
+        );
+        return { content: [{ type: "text", text: result }] };
+      }
+      case "search_memory": {
+        const result = await search(
+          args.query as string,
+          args.topN as number | undefined
+        );
+        return { content: [{ type: "text", text: result }] };
+      }
+      case "list_projects": {
+        const result = await listProjects();
+        return { content: [{ type: "text", text: result }] };
+      }
+      case "get_project_summary": {
+        const result = await getSummary(args.project as string);
+        return { content: [{ type: "text", text: result }] };
+      }
       default:
-        throw new Error(`Unknown tool: ${name}`);
+        return {
+          content: [{ type: "text", text: `Unknown tool: ${name}` }],
+          isError: true,
+        };
     }
-  } catch (error: any) {
+  } catch (err: any) {
     return {
-      content: [{ type: "text", text: `Error: ${error.message}` }],
+      content: [{ type: "text", text: `Error: ${err.message ?? String(err)}` }],
       isError: true,
     };
   }
 });
 
-/**
- * Start the server using stdio transport.
- */
-export async function startMcpServer() {
-  const transport = new StdioServerTransport();
-  
-  // Initialization logic for SQLite mode if needed
+// ── Bootstrap: start server ─────────────────────
+async function main() {
   const STORAGE_MODE = (process.env.SYNQ_STORAGE_MODE || "docker").toLowerCase();
-  if (STORAGE_MODE === "sqlite") {
+  
+  if (STORAGE_MODE === "docker") {
+    const { connectMongo } = require("../services/mongo");
+    const { connectChroma } = require("../services/chroma");
+    const { connectNeo4j } = require("../services/neo4j");
+    try {
+      await connectMongo();
+      await connectChroma();
+      await connectNeo4j();
+    } catch (err) {
+      process.stderr.write(`[SYNQ MCP] Docker DB connection warning: ${err}\n`);
+    }
+  } else {
     const { initSqlite } = require("../services/sqlite");
     initSqlite();
   }
 
+  const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info("Synq MCP Server started.");
+  process.stderr.write(`[SYNQ MCP] Server ready (Mode: ${STORAGE_MODE.toUpperCase()}) — listening via stdio\n`);
 }
+
+main().catch(err => {
+  process.stderr.write(`[SYNQ MCP] Fatal: ${err}\n`);
+  process.exit(1);
+});

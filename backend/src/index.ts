@@ -17,20 +17,17 @@ import ragRoutes from "./routes/rag";
 
 dotenv.config();
 
-const STORAGE_MODE = (process.env.SYNQ_STORAGE_MODE || "docker").toLowerCase();
-const IS_SQLITE = STORAGE_MODE === "sqlite";
-
-// ── .env validation — fail fast with a clear message ──────────
+// ── #9: .env validation — fail fast with a clear message ──────────
 function validateEnv() {
-  const required: Record<string, string> = {};
-  
-  if (!IS_SQLITE) {
-    required["NEO4J_URI"] = "e.g. bolt://localhost:7687";
-    required["NEO4J_USER"] = "e.g. neo4j";
-    required["NEO4J_PASSWORD"] = "Set in backend/.env";
-    required["MONGO_URI"] = "e.g. mongodb://user:pass@localhost:27017/synqdb";
-  }
-
+  // NEO4J, MONGO are always required
+  const required: Record<string, string> = {
+    NEO4J_URI:      "e.g. bolt://localhost:7687",
+    NEO4J_USER:     "e.g. neo4j",
+    NEO4J_PASSWORD: "Set in backend/.env",
+    MONGO_URI:      "e.g. mongodb://user:pass@localhost:27017/synqdb",
+  };
+  // GROQ_API_KEY is only required when GRAPH_BACKEND is set to 'groq'
+  // (or when Ollama is unavailable and auto-fallback kicks in at runtime)
   if (process.env.GRAPH_BACKEND === "groq") {
     required["GROQ_API_KEY"] = "Get a free key at https://console.groq.com";
   }
@@ -50,9 +47,9 @@ const PORT = process.env.PORT || 3001;
 // Body parser — MUST be before routes. Raised limit for large chat saves.
 app.use(express.json({ limit: "5mb" }));
 // Issue #3 Fix: Restrict CORS to trusted origins only
-// v1.4.1: Added localhost:3001 — dashboard is now served from the same port as the API
+// v1.4.2: Added localhost:3001 — dashboard is now served from the same port as the API
 const ALLOWED_ORIGINS = [
-  `http://localhost:${PORT}`, // Dashboard (production build — v1.4.1)
+  `http://localhost:${PORT}`, // Dashboard (production build — v1.4.2)
   "http://localhost:3001",   // Default port fallback
   "http://localhost:5173",   // Vite dashboard (dev)
   "http://localhost:5174",   // Vite dashboard (dev alt)
@@ -155,7 +152,7 @@ app.use("/api/rag", ragRoutes);
 app.get("/health", (_req, res) => {
   res.json({
     status: "SYNQ backend running",
-    version: "1.4.1",
+    version: "1.4.2",
     services: {
       backend: "ok",
       port: PORT,
@@ -163,7 +160,7 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// ── v1.4.1: Serve production dashboard build via sirv ─────────────
+// ── v1.4.2: Serve production dashboard build via sirv ─────────────
 // Eliminates the separate Vite dev server process for self-hosters.
 // Falls back gracefully with a clear message if the build hasn't run yet.
 const dashboardDist = path.resolve(__dirname, "../../dashboard/dist");
@@ -189,28 +186,26 @@ app.post("/api/jobs/clear", async (req, res) => {
   res.json({ success: true, message: "Job queue cleared" });
 });
 
-async function main() {
+async function start() {
   try {
-    if (IS_SQLITE) {
-      const { initSqlite } = require("./services/sqlite");
-      initSqlite();
-    } else {
-      await connectMongo();
-      await connectChroma();
-      await connectNeo4j();
-    }
+    await connectMongo();
+    await connectNeo4j();
+    await connectChroma(); // non-fatal if down
+    
+    // Start background job worker for extraction tasks
+    await startWorker();
   } catch (err) {
-    logger.error("Database connection failed:", err);
-    // Non-fatal — routes that need the DB will handle errors
+    logger.error("Fatal: Database connection failed. SYNQ cannot start.");
+    logger.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
   }
 
   app.listen(PORT, () => {
     logger.success(`SYNQ backend running on port ${PORT}`);
-    startWorker(); // Start the background extraction worker
   });
 }
 
-main().catch(err => {
+start().catch(err => {
   logger.error("Unhandled error during startup:");
   logger.error(err);
   process.exit(1);

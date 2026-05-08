@@ -47,7 +47,7 @@ export interface RetrievedChunk {
   chunkIndex: number;
   content: string;
   score: number;
-  [key: string]: any; // Allow for extra metadata like sessionId, project, etc.
+  [key: string]: any;
 }
 
 export interface ISessionStore {
@@ -78,7 +78,6 @@ export interface IGraphStore {
   saveTriple(triple: Triple): Promise<void>;
   getTriplesBySession(sessionId: string): Promise<Triple[]>;
   getGraphData(filters: { sessionId?: string; type?: string; relation?: string; limit?: number }): Promise<{ nodes: any[]; links: any[] }>;
-  deleteTriplesBySession(sessionId: string): Promise<void>;
 }
 
 export interface IVectorStore {
