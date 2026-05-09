@@ -9,23 +9,22 @@ const router = Router();
 router.get("/export/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  if (!isValidObjectId(id)) {
+  if (!id || !isValidObjectId(id as string)) {
     res.status(400).json({ error: "Invalid sessionId" });
     return;
   }
 
+  const sessionId = id as string;
+
   try {
-    const session = await sessionStore.getSession(id);
+    const session = await sessionStore.getSession(sessionId);
     if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
     }
 
-    // Use internal methods to get all data
-    // Note: This assumes we have these methods. I'll need to check the services.
-    // For now, let's assume sessionStore.getFullChat exists.
-    const fullChat = await (sessionStore as any).getFullChat?.(id);
-    const facts = await (graphStore as any).getFactsBySession?.(id);
+    const fullChat = await sessionStore.getFullChat(sessionId);
+    const facts = await graphStore.getTriplesBySession(sessionId);
     
     const exportData = {
       version: "1.4.4",
@@ -36,7 +35,7 @@ router.get("/export/:id", async (req: Request, res: Response) => {
     };
 
     res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="synq-session-${id}.json"`);
+    res.setHeader("Content-Disposition", `attachment; filename="synq-session-${sessionId}.json"`);
     res.send(JSON.stringify(exportData, null, 2));
   } catch (err) {
     logger.error("Export error:", err);
@@ -58,7 +57,7 @@ router.post("/import", async (req: Request, res: Response) => {
     
     // 1. Create session
     const newSession = await sessionStore.createSession(session.projectName, session.platform);
-    const newId = newSession._id as string;
+    const newId = newSession._id;
 
     // 2. Save full chat if exists
     if (fullChat) {
@@ -66,12 +65,18 @@ router.post("/import", async (req: Request, res: Response) => {
     }
 
     // 3. Save facts if exists
-    if (facts && facts.length > 0) {
-      await graphStore.storeTriples(facts.map((f: any) => ({
-        subject: f.subject,
-        relation: f.relation,
-        object: f.object
-      })), newId);
+    if (facts && Array.isArray(facts)) {
+      for (const f of facts) {
+        await graphStore.saveTriple({
+          subject: f.subject,
+          subjectType: f.subjectType || "Entity",
+          relation: f.relation,
+          object: f.object,
+          objectType: f.objectType || "Entity",
+          sessionId: newId,
+          timestamp: f.timestamp || new Date().toISOString()
+        });
+      }
     }
 
     logger.success(`Imported session: ${session.projectName} (New ID: ${newId})`);
