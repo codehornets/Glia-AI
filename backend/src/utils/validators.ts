@@ -4,9 +4,11 @@
  */
 export function isValidObjectId(id: string): boolean {
   if (!id) return false;
-  // MongoDB check
+  // MongoDB check (24-char hex)
   if (/^[0-9a-fA-F]{24}$/.test(id)) return true;
-  // UUID or custom alphanumeric check (allows test IDs like 'test-uuid-123')
-  if (/^[a-zA-Z0-9-]+$/.test(id)) return true;
+  // UUID check (standard 8-4-4-4-12 format)
+  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) return true;
+  // Explicit test ID check (must start with 'test-')
+  if (id.startsWith("test-")) return true;
   return false;
 }
