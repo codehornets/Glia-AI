@@ -2,7 +2,6 @@ import axios from "axios";
 import { logger } from "../utils/logger";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 export interface Triple {
   subject: string;
   subjectType: string;
@@ -176,16 +175,24 @@ async function llm(prompt: string, maxTokens = 1000): Promise<string> {
 
 // ── Step 1: compress raw chat into ALL meaningful facts ────────────
 export async function summarizeChunk(text: string): Promise<string> {
-  const prompt = `You are a fact extractor. Read this conversation and extract ALL meaningful facts including:
-- Technologies, libraries, frameworks, tools used
-- Technical decisions, bugs, features, architecture patterns
-- Personal facts: names of people, pets, places, preferences, hobbies, goals
-- Relationships: who owns what, who knows what, what the user wants or is building
-- Any specific named entities (project names, company names, product names)
+  const prompt = `You are a precision fact extractor. Read this conversation and extract ALL meaningful facts.
 
-Do NOT skip personal or casual facts — they are important.
-Remove only pure filler ("thanks", "sounds good", "ok") with no information content.
-Output a compressed bullet list of facts. Be specific and concise.
+CRITICAL RULES:
+- Preserve the EXACT nature of every relationship. Examples:
+  * "I am a student at X" → fact: "User is a STUDENT at X" (NOT an employee)
+  * "I work at X" → fact: "User WORKS AT X" (employee)
+  * "I study X" → fact: "User STUDIES X"
+  * "I am in semester N" → fact: "User is in semester N"
+  * "I am building X" → fact: "User IS BUILDING X"
+- Extract ALL of the following:
+  * Academic facts: institution name, degree, semester/year, field of study, courses
+  * Professional facts: job title, employer, projects, tech stack, decisions made
+  * Personal facts: name, location, pets (with EXPLICIT animal type), preferences, goals, hobbies
+  * Technical facts: technologies used, bugs encountered, features built, architecture choices
+  * Named entities: project names, company names, product names, tool names
+- Do NOT skip any named entity or relationship, even if it seems minor.
+- Remove ONLY pure filler ("ok", "thanks", "sure") with zero information content.
+- Output as a bullet list. Each bullet = one precise fact. Be specific.
 
 Conversation:
 """
@@ -194,39 +201,70 @@ ${text}
 
 Facts:`;
 
-  return await llm(prompt, 600);
+  return await llm(prompt, 800);
+}
+
+/**
+ * Step 1.5: Extract entities from a search query for Hybrid RAG.
+ */
+export async function extractEntitiesFromQuery(query: string): Promise<string[]> {
+  const prompt = `Extract exactly the most important named entities (technologies, projects, people, places) from this search query.
+Return ONLY a comma-separated list of entities, or "none" if no clear entities are found.
+
+Query: "${query}"
+
+Entities:`;
+
+  const raw = await llm(prompt, 100);
+  if (raw.toLowerCase().includes("none")) return [];
+  
+  return raw.split(",")
+    .map(e => e.trim())
+    .filter(e => e.length > 0)
+    .filter(e => !e.toLowerCase().includes("entities"));
 }
 
 // ── Step 2: extract triples from compressed summary ───────────────
 export async function extractTriplesFromSummary(summary: string): Promise<Triple[]> {
   const prompt = `Extract semantic triples from these facts.
-Return ONLY a valid JSON array, no explanation, no markdown.
+Return ONLY a valid JSON array, no explanation, no markdown, no code fences.
 
-Each triple MUST have:
-- subject: the main entity (e.g. "Noob", "SplitSmart", "JWT", "MongoDB", "User")
-- subjectType: one of:
-  "Project" | "Technology" | "Feature" | "Bug" | "Decision" | "Concept" |
-  "Library" | "API" | "Database" | "Framework" | "Auth" | "Architecture" |
-  "Person" | "Pet" | "Goal" | "Problem" | "Preference" | "Tool" | "Pattern" |
-  "Location" | "Organization" | "Habit"
-- relation: UPPER_SNAKE_CASE verb, e.g.:
-  "USES" | "HAS_FEATURE" | "DEPENDS_ON" | "IS_A" | "STORES_IN" |
-  "AUTHENTICATES_WITH" | "OWNS" | "NAMED" | "PREFERS" | "WANTS" | "KNOWS" |
-  "HAS" | "LIVES_WITH" | "IS_BUILDING" | "SOLVED_WITH" | "STRUGGLING_WITH" |
-  "DECIDED_TO" | "INTERESTED_IN" | "WORKS_AT" | "CREATED_BY" | "RUNS_ON"
-- object: the related entity
-- objectType: same categories as subjectType
+Each triple MUST have these exact fields:
+- subject: the main entity name (e.g. "Eshaan", "Synq", "React", "User")
+- subjectType: MUST be exactly one of:
+  "Person" | "Pet" | "Organization" | "Location" | "Education"
+  "Project" | "Technology" | "Feature" | "Bug" | "Decision"
+  "Library" | "API" | "Database" | "Framework" | "Auth" | "Architecture"
+  "Goal" | "Problem" | "Preference" | "Habit" | "Tool" | "Pattern" | "Concept"
+- relation: UPPER_SNAKE_CASE. Choose the MOST ACCURATE from this list:
+  Academic:    STUDIES_AT | ENROLLED_IN | IN_SEMESTER | STUDIES | GRADUATED_FROM | MAJORS_IN
+  Personal:    IS_NAMED | OWNS | HAS_PET | LIVES_IN | LIVES_WITH | PREFERS | INTERESTED_IN | WANTS | KNOWS
+  Professional: WORKS_AT | WORKS_ON | CREATED_BY | COLLABORATED_WITH | REPORTS_TO
+  Technical:   USES | DEPENDS_ON | HAS_FEATURE | INTEGRATES_WITH | STORES_IN | RUNS_ON | AUTHENTICATES_WITH
+  General:     IS_A | HAS | IS_BUILDING | IS_IN | PART_OF | DECIDED_TO | STRUGGLING_WITH | SOLVED_WITH
+- object: the target entity name
+- objectType: same valid values as subjectType
 
-STRICT CLASSIFICATION RULES (follow these exactly):
-1. AI model names (Gemini, Claude, GPT, GPT-4, ChatGPT, Sonnet, Llama, Mistral,
-   Copilot, Grok, etc.) MUST be classified as "Technology". NEVER as Pet or Person.
-2. Only classify as "Pet" if the text EXPLICITLY says "my [animal] named X" or
-   "I have a [animal] called X". Do not infer pets from names alone.
-3. Only classify as "Person" for real human names clearly identified as people.
-4. Programming languages, frameworks, tools, and APIs are always "Technology".
-5. Extract personal facts: if user says "my cat's name is John", extract
-   (Pet: John) -[OWNED_BY]-> (Person: User).
-6. Do not extract triples about things that are not clearly stated as facts.
+STRICT CLASSIFICATION RULES — read carefully:
+1. STUDENT vs EMPLOYEE distinction (most important):
+   - "student at X", "studying at X", "enrolled at X", "attend X" → relation MUST be STUDIES_AT
+   - "work at X", "employed at X", "job at X" → relation MUST be WORKS_AT
+   - NEVER use WORKS_AT for a student. NEVER use STUDIES_AT for an employee.
+2. Semester / academic year → use IN_SEMESTER, objectType "Education"
+3. Educational institutions (universities, colleges, schools) → objectType MUST be "Organization"
+4. Field of study, degree, course → objectType MUST be "Education"
+5. AI model names (Claude, Gemini, GPT, ChatGPT, Copilot, Llama, Mistral, Grok, Sonnet) → subjectType MUST be "Technology". NEVER "Person" or "Pet".
+6. Only use "Pet" if the text EXPLICITLY says "my [animal]" or "I have a [animal named X]". Never infer pets from names alone.
+7. Only use "Person" for real human beings explicitly identified as people.
+8. Programming languages, frameworks, libraries, tools, APIs → ALWAYS "Technology".
+9. Extract ALL relationships. If in doubt, include it.
+
+EXAMPLES (abbreviated — follow the same pattern for all conversation types):
+"User is a student at KIIT" → STUDIES_AT (NOT WORKS_AT)
+"User is in 8th semester" → IN_SEMESTER, objectType "Education"
+"User works at Google" → WORKS_AT, objectType "Organization"
+"Project uses React, has CORS bug" → USES (Technology), STRUGGLING_WITH (Bug)
+"User chose PostgreSQL over MongoDB" → DECIDED_TO + STORES_IN (Database)
 
 Facts:
 """
@@ -235,7 +273,7 @@ ${summary}
 
 Return ONLY: [{"subject":"...","subjectType":"...","relation":"...","object":"...","objectType":"..."}]`;
 
-  const raw   = await llm(prompt, 1200);
+  const raw = await llm(prompt, 1500);
   
   // More robust JSON extraction: find the first '[' and last ']'
   const start = raw.indexOf("[");

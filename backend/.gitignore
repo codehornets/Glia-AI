@@ -5,3 +5,9 @@
 .env.production.local
 node_modules
 dist
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.db-journal

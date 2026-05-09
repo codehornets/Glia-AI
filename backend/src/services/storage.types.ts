@@ -78,6 +78,7 @@ export interface IGraphStore {
   saveTriple(triple: Triple): Promise<void>;
   getTriplesBySession(sessionId: string): Promise<Triple[]>;
   getGraphData(filters: { sessionId?: string; type?: string; relation?: string; limit?: number }): Promise<{ nodes: any[]; links: any[] }>;
+  findRelatedTriples(entities: string[], sessionId: string): Promise<Triple[]>;
 }
 
 export interface IVectorStore {

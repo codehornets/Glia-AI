@@ -16,6 +16,7 @@ export function initSqlite() {
 
   db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   
   // Load sqlite-vec extension
   sqliteVec.load(db);
@@ -111,7 +112,8 @@ function createTables() {
       chunk_id TEXT PRIMARY KEY,
       sessionId TEXT NOT NULL,
       chunkIndex INTEGER,
-      content TEXT NOT NULL
+      content TEXT NOT NULL,
+      FOREIGN KEY(sessionId) REFERENCES sessions(id) ON DELETE CASCADE
     )
   `);
   db.exec("CREATE INDEX IF NOT EXISTS idx_chunks_session ON chunk_metadata(sessionId)");

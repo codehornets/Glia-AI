@@ -12,7 +12,8 @@
  */
 
 import { Router, Request, Response } from "express";
-import { vectorStore, RetrievedChunk } from "../services/storage";
+import { vectorStore, graphStore, RetrievedChunk } from "../services/storage";
+import { extractEntitiesFromQuery } from "../services/extractor";
 import { logger } from "../utils/logger";
 import { wrapInContextBlock, sanitizeChunks } from "../middleware/sanitize";
 import { isValidObjectId } from "../utils/validators";
@@ -40,15 +41,21 @@ router.post("/retrieve", async (req: Request, res: Response) => {
   try {
     logger.info(`RAG retrieve (topN=${topN}): "${String(prompt).slice(0, 60)}..." for session ${sessionId}`);
 
+    // ── Hybrid Search (Graph Enrichment) ───────────────────
+    const entities = await extractEntitiesFromQuery(prompt);
+    let relatedTriples: any[] = [];
+    if (entities.length > 0) {
+      relatedTriples = await graphStore.findRelatedTriples(entities, sessionId);
+    }
+
+    // ── v1.4.2: Vector retrieval + Sanitise chunks ─────────────────
     const rawChunks = await vectorStore.retrieveRelevantChunks(prompt, sessionId, topN);
 
-    if (rawChunks.length === 0) {
-      logger.info("RAG: no chunks above threshold — skipping injection");
-      res.json({ found: false, chunks: [] });
+    if (rawChunks.length === 0 && relatedTriples.length === 0) {
+      res.json({ found: false, chunks: [], graphFacts: [] });
       return;
     }
 
-    // ── v1.4.2: Sanitise chunks before returning ───────────────────
     const MAX_CONTEXT_CHARS = 1500;
     const cappedChunks: RetrievedChunk[] = rawChunks.map(c => ({
       ...c,
@@ -59,13 +66,20 @@ router.post("/retrieve", async (req: Request, res: Response) => {
 
     // Sanitise (redact injection patterns) then wrap in XML delimiters
     const safeChunks = sanitizeChunks(cappedChunks);
-    const contextBlock = wrapInContextBlock(safeChunks);
+    
+    // Merge graph knowledge into the context block
+    let contextBlock = wrapInContextBlock(safeChunks);
+    if (relatedTriples.length > 0) {
+      const graphText = relatedTriples.map(t => `- ${t.subject} ${t.relation} ${t.object}`).join("\n");
+      contextBlock = `<synq_graph_knowledge>\n${graphText}\n</synq_graph_knowledge>\n\n${contextBlock}`;
+    }
 
-    logger.success(`RAG: ${safeChunks.length} chunk(s) found — scores: ${safeChunks.map(c => c.score.toFixed(2)).join(", ")}`);
+    logger.success(`RAG: ${safeChunks.length} chunk(s) and ${relatedTriples.length} graph triple(s) found`);
 
     res.json({
       found: true,
       chunks:      safeChunks,
+      graphFacts:  relatedTriples,
       contextBlock,
       chunksFound: safeChunks.map(c => c.chunkIndex),
       scores:      safeChunks.map(c => c.score),

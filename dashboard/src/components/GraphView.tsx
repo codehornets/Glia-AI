@@ -15,12 +15,14 @@
  *    semi-transparent background behind the label for readability.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 
 interface Node {
   id: string;
   type: string;
+  community?: number;
+  firstSeen?: string;
   x?: number;
   y?: number;
   fx?: number | null;
@@ -31,6 +33,7 @@ interface Link {
   source: string | Node;
   target: string | Node;
   relation: string;
+  timestamp?: string;
 }
 
 interface Props {
@@ -43,7 +46,7 @@ interface Props {
 }
 
 // ── Extended color palette (technical + personal entity types) ─────
-const TYPE_COLORS: Record<string, string> = {
+const STATIC_TYPE_COLORS: Record<string, string> = {
   // Personal (Warm & Soft)
   Person: "#F472B6", // Pink
   Pet: "#FB923C",    // Orange
@@ -53,6 +56,7 @@ const TYPE_COLORS: Record<string, string> = {
   Habit: "#FCD34D",  // Amber
   Location: "#2DD4BF", // Teal
   Organization: "#6366F1", // Indigo
+  Education: "#A78BFA",   // Purple (academic)
   // Technical (Sophisticated Cools)
   Project: "#94A3B8", // Slate
   Technology: "#8B5CF6", // Violet
@@ -71,6 +75,32 @@ const TYPE_COLORS: Record<string, string> = {
   Algorithm: "#14B8A6", // Teal
   default: "#475569",
 };
+
+// Dynamic color generator for unknown types using a hash
+function getDynamicColor(type: string): string {
+  if (!type) return STATIC_TYPE_COLORS.default;
+  if (STATIC_TYPE_COLORS[type]) return STATIC_TYPE_COLORS[type];
+
+  let hash = 0;
+  for (let i = 0; i < type.length; i++) {
+    hash = type.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return "#" + "00000".substring(0, 6 - c.length) + c;
+}
+
+// Proxy to gracefully handle both known and unknown types
+const TYPE_COLORS = new Proxy(STATIC_TYPE_COLORS, {
+  get: (target, prop) => {
+    if (typeof prop !== "string") return target["default"];
+    return getDynamicColor(prop);
+  }
+});
+
+const COMMUNITY_COLORS = [
+  "#60A5FA", "#F87171", "#34D399", "#FBBF24", "#A78BFA",
+  "#F472B6", "#2DD4BF", "#FB923C", "#818CF8", "#A3E635"
+];
 
 // Short abbreviation to show INSIDE the node circle.
 // Keeps the circle clean and readable at any node size.
@@ -100,21 +130,54 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
   const [settingNodeLabels, setSettingNodeLabels] = useState<"always" | "hover">("hover");
   const [settingEdgeLabels, setSettingEdgeLabels] = useState<"always" | "hover">("hover");
   const [settingTension, setSettingTension] = useState<"loose" | "tight">("tight");
+  const [settingShowCommunities, setSettingShowCommunities] = useState(false);
+  const [temporalIndex, setTemporalIndex] = useState<number | null>(null); // null means max
   // ── Zoom buttons ───────────────────────────────────────────────
   function zoomIn() { if (svgSelRef.current && zoomRef.current) svgSelRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.4); }
   function zoomOut() { if (svgSelRef.current && zoomRef.current) svgSelRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 0.7); }
   function zoomReset() { if (svgSelRef.current && zoomRef.current) svgSelRef.current.transition().duration(400).call(zoomRef.current.transform, d3.zoomIdentity); }
 
+  const allTimestamps = useMemo(() => {
+    return [...new Set(nodes.map(n => n.firstSeen ? new Date(n.firstSeen).getTime() : 0).filter(t => t > 0))].sort((a, b) => a - b);
+  }, [nodes]);
+
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
+
+    // Temporal Filtering
+    const maxIndex = Math.max(0, allTimestamps.length - 1);
+    const currentIndex = temporalIndex !== null ? Math.min(temporalIndex, maxIndex) : maxIndex;
+    const currentCutoff = allTimestamps.length > 0 ? allTimestamps[currentIndex] : 0;
+
+    // Deep-clone filtered data so D3's force simulation cannot mutate the React state.
+    // D3 replaces string source/target with object references in-place. If we let it
+    // mutate the original arrays, subsequent renders (e.g. slider moves) get stale
+    // node references that break link resolution in the new simulation.
+    const filteredNodes: Node[] = nodes
+      .filter(n => !n.firstSeen || new Date(n.firstSeen).getTime() <= currentCutoff)
+      .map(n => ({ ...n }));
+
+    const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredLinks: Link[] = links
+      .filter(l => {
+        const sId = typeof l.source === "string" ? l.source : (l.source as Node).id;
+        const tId = typeof l.target === "string" ? l.target : (l.target as Node).id;
+        return filteredNodeIds.has(sId) && filteredNodeIds.has(tId);
+      })
+      .map(l => ({
+        ...l,
+        // Always reset to string IDs so D3 resolves them fresh each render
+        source: typeof l.source === "string" ? l.source : (l.source as Node).id,
+        target: typeof l.target === "string" ? l.target : (l.target as Node).id,
+      }));
 
     const width = svgRef.current.clientWidth || 900;
     const height = svgRef.current.clientHeight || 600;
 
-    // Compute degree (connection count) for each node
+    // Compute degree for filtered nodes
     const degreeMap = new Map<string, number>();
-    nodes.forEach(n => degreeMap.set(n.id, 0));
-    links.forEach(l => {
+    filteredNodes.forEach(n => degreeMap.set(n.id, 0));
+    filteredLinks.forEach(l => {
       const s = typeof l.source === "string" ? l.source : l.source.id;
       const t = typeof l.target === "string" ? l.target : l.target.id;
       degreeMap.set(s, (degreeMap.get(s) ?? 0) + 1);
@@ -158,12 +221,12 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
       .scaleExtent([0.15, 5])
       .on("zoom", (event) => container.attr("transform", event.transform.toString()));
     zoomRef.current = zoom;
-    svg.call(zoom);
+    svg.call(zoom).on("dblclick.zoom", null); // disable double click zoom
     svg.call(zoom.transform, d3.zoomIdentity);
 
     // ── Force simulation ───────────────────────────────────────────
-    const simulation = d3.forceSimulation<Node>(nodes)
-      .force("link", d3.forceLink<Node, Link>(links)
+    const simulation = d3.forceSimulation<Node>(filteredNodes)
+      .force("link", d3.forceLink<Node, Link>(filteredLinks)
         .id(d => d.id)
         .distance(d => {
           const s = d.source as Node;
@@ -185,14 +248,17 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     const linkG = container.append("g").attr("class", "links");
 
     const linkPath = linkG.selectAll<SVGPathElement, Link>("path")
-      .data(links)
+      .data(filteredLinks)
       .join("path")
       .attr("class", "edge-path")
       .attr("fill", "none")
       .attr("stroke", d => {
         const targetId = typeof d.target === "string" ? d.target : (d.target as any).id;
-        const targetNode = nodes.find(n => n.id === targetId);
+        const targetNode = filteredNodes.find(n => n.id === targetId);
         const type = targetNode?.type || "default";
+        if (settingShowCommunities && targetNode?.community) {
+          return COMMUNITY_COLORS[targetNode.community % COMMUNITY_COLORS.length];
+        }
         return TYPE_COLORS[type] || TYPE_COLORS.default;
       })
       .attr("stroke-width", 1.5)
@@ -208,7 +274,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     const linkLabelG = container.append("g").attr("class", "link-labels").style("pointer-events", "none");
 
     const linkLabelGroup = linkLabelG.selectAll<SVGGElement, Link>("g")
-      .data(links)
+      .data(filteredLinks)
       .join("g")
       .attr("opacity", settingEdgeLabels === "always" ? 1 : 0);
 
@@ -238,7 +304,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     const nodeG = container.append("g").attr("class", "nodes");
 
     const nodeGroup = nodeG.selectAll<SVGGElement, Node>("g")
-      .data(nodes)
+      .data(filteredNodes)
       .join("g")
       .style("cursor", "grab")
       .call(
@@ -265,7 +331,12 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     // Main filled circle (flat, solid color)
     nodeGroup.append("circle")
       .attr("r", d => nodeRadius(d.id))
-      .attr("fill", d => TYPE_COLORS[d.type] || TYPE_COLORS.default)
+      .attr("fill", d => {
+        if (settingShowCommunities && d.community) {
+          return COMMUNITY_COLORS[d.community % COMMUNITY_COLORS.length];
+        }
+        return TYPE_COLORS[d.type] || TYPE_COLORS.default;
+      })
       .attr("stroke", "#1A1D27")
       .attr("stroke-width", 2);
 
@@ -408,7 +479,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     linkPath.attr("opacity", 0).transition().duration(500).attr("opacity", 1);
 
     return () => { simulation.stop(); };
-  }, [nodes, links, settingNodeSize, settingTension]);
+  }, [nodes, links, settingNodeSize, settingTension, settingShowCommunities, temporalIndex, allTimestamps]);
 
   // ── Handle Visual State (Selection, Hover, Filters) ─────────────
   useEffect(() => {
@@ -445,7 +516,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
       .attr("stroke-opacity", l => {
         const s = typeof l.source === "string" ? l.source : (l.source as any).id;
         const t = typeof l.target === "string" ? l.target : (l.target as any).id;
-        
+
         if (hoveredNode) return (s === hoveredNode.id || t === hoveredNode.id) ? 0.8 : 0.1;
         if (!selectedNodeId && !filterType) return 0.35;
         if (selectedNodeId && (s === selectedNodeId || t === selectedNodeId)) return 0.8;
@@ -489,9 +560,9 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
         <button title="Zoom in" onClick={zoomIn} className="graph-btn">+</button>
         <button title="Zoom out" onClick={zoomOut} className="graph-btn">−</button>
         <button title="Reset zoom" onClick={zoomReset} className="graph-btn">⊙</button>
-        <button 
-          title="Graph Settings" 
-          onClick={() => setShowSettings(!showSettings)} 
+        <button
+          title="Graph Settings"
+          onClick={() => setShowSettings(!showSettings)}
           className={`graph-btn ${showSettings ? "active" : ""}`}
           style={{ marginTop: "8px" }}
         >
@@ -504,11 +575,11 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
       {showSettings && (
         <div className="graph-settings-panel">
           <div className="settings-title">Graph Settings</div>
-          
+
           <div className="settings-row">
             <span className="settings-label">Node Size</span>
-            <select 
-              value={settingNodeSize} 
+            <select
+              value={settingNodeSize}
               onChange={e => setSettingNodeSize(e.target.value as any)}
               className="settings-select"
             >
@@ -519,8 +590,8 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
 
           <div className="settings-row">
             <span className="settings-label">Node Labels</span>
-            <select 
-              value={settingNodeLabels} 
+            <select
+              value={settingNodeLabels}
               onChange={e => setSettingNodeLabels(e.target.value as any)}
               className="settings-select"
             >
@@ -531,8 +602,8 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
 
           <div className="settings-row">
             <span className="settings-label">Edge Facts</span>
-            <select 
-              value={settingEdgeLabels} 
+            <select
+              value={settingEdgeLabels}
               onChange={e => setSettingEdgeLabels(e.target.value as any)}
               className="settings-select"
             >
@@ -543,14 +614,38 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
 
           <div className="settings-row">
             <span className="settings-label">Physics Tension</span>
-            <select 
-              value={settingTension} 
+            <select
+              value={settingTension}
               onChange={e => setSettingTension(e.target.value as any)}
               className="settings-select"
             >
               <option value="tight">Tight</option>
               <option value="loose">Loose</option>
             </select>
+          </div>
+
+          <div className="settings-divider" style={{ height: "1px", background: "var(--border)", margin: "12px 0" }} />
+          <div className="settings-subtitle" style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "8px", fontWeight: "bold" }}>ADVANCED ANALYTICS</div>
+
+          <div className="settings-row">
+            <span className="settings-label">Community Clusters</span>
+            <input
+              type="checkbox"
+              checked={settingShowCommunities}
+              onChange={e => setSettingShowCommunities(e.target.checked)}
+            />
+          </div>
+
+          <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+            <span className="settings-label">Temporal View (Knowledge Growth)</span>
+            <input
+              type="range"
+              min="0" max={Math.max(0, allTimestamps.length - 1)} step="1"
+              value={temporalIndex !== null ? Math.min(temporalIndex, Math.max(0, allTimestamps.length - 1)) : Math.max(0, allTimestamps.length - 1)}
+              onChange={e => setTemporalIndex(parseInt(e.target.value))}
+              style={{ width: "100%", opacity: allTimestamps.length <= 1 ? 0.3 : 1 }}
+              disabled={allTimestamps.length <= 1}
+            />
           </div>
         </div>
       )}
@@ -561,8 +656,8 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
         <div className="graph-legend">
           <div className="graph-legend-title">Entity Types (Filter)</div>
           {usedTypes.map(type => (
-            <div 
-              key={type} 
+            <div
+              key={type}
               className={`graph-legend-item ${filterType === type ? "active" : ""}`}
               onClick={() => onFilterChange?.(filterType === type ? null : type)}
               style={{ cursor: "pointer", opacity: (!filterType || filterType === type) ? 1 : 0.4 }}
@@ -576,15 +671,12 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
               <span className="graph-legend-text" style={{ color: filterType === type ? "var(--accent)" : "var(--text-muted)" }}>{type}</span>
             </div>
           ))}
-          {filterType && (
-            <button className="clear-legend-btn" onClick={() => onFilterChange?.(null)}>Clear Filter</button>
-          )}
         </div>
       )}
 
       {/* Hover tooltip — shows full name, full type, degree */}
       {hoveredNode && (
-        <div 
+        <div
           className="graph-tooltip"
           style={{
             border: `1px solid ${TYPE_COLORS[hoveredNode.type] || TYPE_COLORS.default}`,

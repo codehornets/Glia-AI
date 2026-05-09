@@ -145,7 +145,7 @@ class DockerGraphStore implements IGraphStore {
 
       query += `
         RETURN s.name AS source, s.type AS sourceType,
-               r.type AS relation,
+               r.type AS relation, r.timestamp AS timestamp,
                o.name AS target, o.type AS targetType
         LIMIT $limit
       `;
@@ -157,12 +157,70 @@ class DockerGraphStore implements IGraphStore {
       result.records.forEach((rec) => {
         const src = rec.get("source");
         const tgt = rec.get("target");
-        if (!nodes.has(src)) nodes.set(src, { id: src, type: rec.get("sourceType") });
-        if (!nodes.has(tgt)) nodes.set(tgt, { id: tgt, type: rec.get("targetType") });
-        links.push({ source: src, target: tgt, relation: rec.get("relation") });
+        const ts = rec.get("timestamp"); // Assuming Neo4j r.timestamp is available
+        if (!nodes.has(src)) nodes.set(src, { id: src, type: rec.get("sourceType"), firstSeen: ts });
+        if (!nodes.has(tgt)) nodes.set(tgt, { id: tgt, type: rec.get("targetType"), firstSeen: ts });
+        links.push({ source: src, target: tgt, relation: rec.get("relation"), timestamp: ts });
       });
 
+      const nodeArray = Array.from(nodes.values());
+      
+      // Assign basic communities based on connected components
+      const visited = new Set<string>();
+      let communityCounter = 0;
+      
+      for (const startNode of nodeArray) {
+        if (visited.has(startNode.id)) continue;
+        
+        communityCounter++;
+        const queue = [startNode.id];
+        visited.add(startNode.id);
+        
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          const node = nodes.get(currentId);
+          if (node) node.community = communityCounter;
+          
+          for (const link of links) {
+            if (link.source === currentId && !visited.has(link.target)) {
+              visited.add(link.target);
+              queue.push(link.target);
+            } else if (link.target === currentId && !visited.has(link.source)) {
+              visited.add(link.source);
+              queue.push(link.source);
+            }
+          }
+        }
+      }
+
       return { nodes: Array.from(nodes.values()), links };
+    } finally {
+      await session.close();
+    }
+  }
+  async findRelatedTriples(entities: string[], sessionId: string): Promise<any[]> {
+    const session = neo4jService.getDriver().session();
+    try {
+      const query = `
+        MATCH (s:Entity)-[r:RELATION]->(o:Entity)
+        WHERE r.sessionId = $sessionId
+        AND (s.name IN $entities OR o.name IN $entities)
+        RETURN s.name AS subject, s.type AS subjectType,
+               r.type AS relation,
+               o.name AS object, o.type AS objectType,
+               r.timestamp AS timestamp
+        LIMIT 15
+      `;
+      const result = await session.run(query, { sessionId, entities });
+      return result.records.map(rec => ({
+        subject: rec.get("subject"),
+        subjectType: rec.get("subjectType"),
+        relation: rec.get("relation"),
+        object: rec.get("object"),
+        objectType: rec.get("objectType"),
+        sessionId,
+        timestamp: rec.get("timestamp")
+      }));
     } finally {
       await session.close();
     }

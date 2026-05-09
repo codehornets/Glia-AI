@@ -63,16 +63,77 @@ export class SqliteGraphStore implements IGraphStore {
     const links: any[] = [];
 
     for (const row of rows) {
-      if (!nodes.has(row.subject)) nodes.set(row.subject, { id: row.subject, type: row.subjectType });
-      if (!nodes.has(row.object)) nodes.set(row.object, { id: row.object, type: row.objectType });
+      const ts = row.timestamp;
+      
+      if (!nodes.has(row.subject)) {
+        nodes.set(row.subject, { id: row.subject, type: row.subjectType, firstSeen: ts });
+      }
+      if (!nodes.has(row.object)) {
+        nodes.set(row.object, { id: row.object, type: row.objectType, firstSeen: ts });
+      }
       
       links.push({
         source: row.subject,
         target: row.object,
-        relation: row.relation
+        relation: row.relation,
+        timestamp: ts
       });
     }
 
+    // Assign basic communities based on connected components
+    const visited = new Set<string>();
+    let communityCounter = 0;
+    const nodeIds = Array.from(nodes.keys());
+    
+    for (const startId of nodeIds) {
+      if (visited.has(startId)) continue;
+      
+      communityCounter++;
+      const queue = [startId];
+      visited.add(startId);
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const node = nodes.get(currentId);
+        if (node) node.community = communityCounter;
+        
+        // Find neighbors
+        for (const link of links) {
+          if (link.source === currentId && !visited.has(link.target)) {
+            visited.add(link.target);
+            queue.push(link.target);
+          } else if (link.target === currentId && !visited.has(link.source)) {
+            visited.add(link.source);
+            queue.push(link.source);
+          }
+        }
+      }
+    }
+
     return { nodes: Array.from(nodes.values()), links };
+  }
+  async findRelatedTriples(entities: string[], sessionId: string): Promise<Triple[]> {
+    if (entities.length === 0) return [];
+    
+    // Create placeholders (?, ?, ?)
+    const placeholders = entities.map(() => "?").join(",");
+    const query = `
+      SELECT * FROM facts 
+      WHERE sessionId = ? 
+      AND (subject IN (${placeholders}) OR object IN (${placeholders}))
+      LIMIT 15
+    `;
+    
+    const rows = this.db.prepare(query).all(sessionId, ...entities, ...entities) as any[];
+    
+    return rows.map(row => ({
+      subject: row.subject,
+      subjectType: row.subjectType,
+      relation: row.relation,
+      object: row.object,
+      objectType: row.objectType,
+      sessionId: row.sessionId,
+      timestamp: row.timestamp
+    }));
   }
 }

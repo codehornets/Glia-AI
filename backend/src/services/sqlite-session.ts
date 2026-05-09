@@ -64,6 +64,13 @@ export class SqliteSessionStore implements ISessionStore {
   }
 
   async deleteSession(id: string): Promise<void> {
+    // 1. Clean up vec_chunks (virtual table, no cascade support)
+    this.db.prepare(`
+      DELETE FROM vec_chunks 
+      WHERE chunk_id IN (SELECT chunk_id FROM chunk_metadata WHERE sessionId = ?)
+    `).run(id);
+
+    // 2. Delete the session (cascades to chunk_metadata, facts, full_chats)
     this.db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
   }
 
