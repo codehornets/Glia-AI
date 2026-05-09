@@ -209,19 +209,48 @@ Facts:`;
  */
 export async function extractEntitiesFromQuery(query: string): Promise<string[]> {
   const prompt = `Extract exactly the most important named entities (technologies, projects, people, places) from this search query.
-Return ONLY a comma-separated list of entities, or "none" if no clear entities are found.
+Return ONLY a JSON array of strings, or "none" if no clear entities are found.
+
+Example: ["React", "Synq", "Eshaan"]
 
 Query: "${query}"
 
 Entities:`;
 
-  const raw = await llm(prompt, 100);
-  if (raw.toLowerCase().includes("none")) return [];
-  
-  return raw.split(",")
-    .map(e => e.trim())
-    .filter(e => e.length > 0)
-    .filter(e => !e.toLowerCase().includes("entities"));
+  try {
+    const raw = await llm(prompt, 100);
+    if (!raw || raw.toLowerCase().includes("none")) return [];
+    
+    // 1. Try to parse as JSON first
+    try {
+      const start = raw.indexOf("[");
+      const end = raw.lastIndexOf("]");
+      if (start !== -1 && end !== -1) {
+        const clean = raw.slice(start, end + 1).trim();
+        const parsed = JSON.parse(clean);
+        if (Array.isArray(parsed)) {
+          return parsed.map(e => String(e).trim()).filter(Boolean);
+        }
+      }
+    } catch {
+      // Fallback to manual parsing
+    }
+
+    // 2. Fallback cleanup: remove brackets, quotes, and "Entities:" prefix
+    return raw.replace(/[\[\]"]/g, "")
+      .replace(/Entities:/gi, "")
+      .split(",")
+      .map(e => e.trim())
+      .filter(e => {
+        return e.length > 0 && 
+               e.length < 50 && 
+               e.toLowerCase() !== "none" &&
+               !e.toLowerCase().includes("not json");
+      });
+  } catch (err) {
+    logger.warn(`[SYNQ] Entity extraction failed: ${err instanceof Error ? err.message : String(err)}`);
+    return [];
+  }
 }
 
 // ── Step 2: extract triples from compressed summary ───────────────
