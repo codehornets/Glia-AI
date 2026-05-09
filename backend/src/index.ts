@@ -12,6 +12,7 @@ import contextRoutes from "./routes/context";
 import graphRoutes from "./routes/graph";
 import chatRoutes from "./routes/chat";
 import ragRoutes from "./routes/rag";
+import sessionRoutes from "./routes/session";
 
 dotenv.config();
 
@@ -153,12 +154,13 @@ app.use("/api/graph", graphRoutes);
 app.use("/api/chat/save", saveLimiter); // strict limit — BEFORE the route handler
 app.use("/api/chat", chatRoutes);
 app.use("/api/rag", ragRoutes);
+app.use("/api/session", sessionRoutes);
 
 // Health check — includes service status
 app.get("/health", (_req, res) => {
   res.json({
     status: "SYNQ backend running",
-    version: "1.4.2",
+    version: "1.4.4",
     services: {
       backend: "ok",
       port: PORT,

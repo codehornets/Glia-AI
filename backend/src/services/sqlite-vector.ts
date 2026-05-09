@@ -23,8 +23,7 @@ export class SqliteVectorStore implements IVectorStore {
 
     const transaction = this.db.transaction((items: { chunk: WindowChunk, embedding: number[] }[]) => {
       for (const item of items) {
-        // sqlite-vec expects a Float32Array or a Buffer for embeddings
-        const vector = new Float32Array(item.embedding);
+        const vector = Buffer.from(new Float32Array(item.embedding).buffer);
         insertVec.run(item.chunk.id, vector);
         insertMeta.run(item.chunk.id, item.chunk.sessionId, item.chunk.chunkIndex, item.chunk.content);
       }
@@ -36,29 +35,37 @@ export class SqliteVectorStore implements IVectorStore {
 
   async retrieveRelevantChunks(query: string, sessionId: string, topN = 3): Promise<RetrievedChunk[]> {
     const queryEmbedding = await generateEmbedding(query);
-    const vector = new Float32Array(queryEmbedding);
+    const vector = Buffer.from(new Float32Array(queryEmbedding).buffer);
 
-    // sqlite-vec returns 'distance'. For cosine, similarity = 1 - distance? 
-    // Wait, better-sqlite3 with sqlite-vec: 
-    // SELECT ... FROM vec_chunks WHERE embedding MATCH ? AND k = ?
+    // v1.4.4: Full query with Session ID filtering and Time-based Decay
     const rows = this.db.prepare(`
       SELECT 
         m.content,
         m.chunkIndex,
-        v.distance
+        v.distance,
+        s.updatedAt,
+        s.createdAt
       FROM vec_chunks v
       JOIN chunk_metadata m ON v.chunk_id = m.chunk_id
+      JOIN sessions s ON m.sessionId = s.id
       WHERE v.embedding MATCH ? 
         AND m.sessionId = ?
         AND k = ?
     `).all(vector, sessionId, topN * 2) as any[];
 
     return rows
-      .map(row => ({
-        content: row.content,
-        chunkIndex: row.chunkIndex,
-        score: 1 - row.distance // Approximate similarity
-      }))
+      .map(row => {
+        const semanticScore = 1.0 - row.distance;
+        const lastUpdate = new Date(row.updatedAt || row.createdAt || new Date()).getTime();
+        const daysOld = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
+        const decayFactor = 1.0 - Math.min(0.3, (daysOld / 180) * 0.3);
+        
+        return {
+          content: row.content,
+          chunkIndex: row.chunkIndex,
+          score: semanticScore * decayFactor
+        };
+      })
       .filter(r => r.score >= SIMILARITY_THRESHOLD)
       .sort((a, b) => b.score - a.score)
       .slice(0, topN);
@@ -72,19 +79,29 @@ export class SqliteVectorStore implements IVectorStore {
       SELECT 
         m.content,
         m.chunkIndex,
-        v.distance
+        v.distance,
+        s.updatedAt,
+        s.createdAt
       FROM vec_chunks v
       JOIN chunk_metadata m ON v.chunk_id = m.chunk_id
+      JOIN sessions s ON m.sessionId = s.id
       WHERE v.embedding MATCH ? 
         AND k = ?
     `).all(vector, topN * 2) as any[];
 
     return rows
-      .map(row => ({
-        content: row.content,
-        chunkIndex: row.chunkIndex,
-        score: 1 - row.distance
-      }))
+      .map(row => {
+        const semanticScore = 1.0 - row.distance;
+        const lastUpdate = new Date(row.updatedAt || row.createdAt || new Date()).getTime();
+        const daysOld = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
+        const decayFactor = 1.0 - Math.min(0.3, (daysOld / 180) * 0.3);
+        
+        return {
+          content: row.content,
+          chunkIndex: row.chunkIndex,
+          score: semanticScore * decayFactor
+        };
+      })
       .filter(r => r.score >= (SIMILARITY_THRESHOLD + 0.05))
       .sort((a, b) => b.score - a.score)
       .slice(0, topN);

@@ -31,11 +31,12 @@ router.post("/retrieve", async (req: Request, res: Response) => {
     return;
   }
 
-  // Clamp topN — sliding window chunks are smaller so allow up to 6
-  topN = Math.max(1, Math.min(Number(topN) || 3, 6));
+  // v1.4.4: Character-based context budgeting
+  // We retrieve a larger pool and fill until the budget is reached.
+  const MAX_TOTAL_CHARS = 6000;
 
   try {
-    logger.info(`RAG retrieve (topN=${topN}): "${String(prompt).slice(0, 60)}..." for session ${sessionId}`);
+    logger.info(`RAG retrieve (budget=${MAX_TOTAL_CHARS} chars): "${String(prompt).slice(0, 60)}..." for session ${sessionId}`);
 
     // ── Hybrid Search (Graph Enrichment) ───────────────────
     const entities = await extractEntitiesFromQuery(prompt);
@@ -44,41 +45,50 @@ router.post("/retrieve", async (req: Request, res: Response) => {
       relatedTriples = await graphStore.findRelatedTriples(entities, sessionId);
     }
 
-    // ── v1.4.2: Vector retrieval + Sanitise chunks ─────────────────
-    const rawChunks = await vectorStore.retrieveRelevantChunks(prompt, sessionId, topN);
+    // Retrieve a larger candidate pool for budgeting
+    const candidateChunks = await vectorStore.retrieveRelevantChunks(prompt, sessionId, 10);
 
-    if (rawChunks.length === 0 && relatedTriples.length === 0) {
+    if (candidateChunks.length === 0 && relatedTriples.length === 0) {
       res.json({ found: false, chunks: [], graphFacts: [] });
       return;
     }
 
-    const MAX_CONTEXT_CHARS = 1500;
-    const cappedChunks: RetrievedChunk[] = rawChunks.map(c => ({
-      ...c,
-      content: c.content.length > MAX_CONTEXT_CHARS
-        ? c.content.slice(0, MAX_CONTEXT_CHARS) + "\n… (truncated)"
-        : c.content,
-    }));
+    // Fill budget
+    const safeChunks: RetrievedChunk[] = [];
+    let currentChars = 0;
+
+    for (const chunk of candidateChunks) {
+      if (currentChars + chunk.content.length > MAX_TOTAL_CHARS) {
+        // If the very first chunk is huge, truncate it
+        if (safeChunks.length === 0) {
+          const truncated = chunk.content.slice(0, MAX_TOTAL_CHARS);
+          safeChunks.push({ ...chunk, content: truncated + "\n... (truncated for budget)" });
+        }
+        break;
+      }
+      safeChunks.push(chunk);
+      currentChars += chunk.content.length;
+    }
 
     // Sanitise (redact injection patterns) then wrap in XML delimiters
-    const safeChunks = sanitizeChunks(cappedChunks);
+    const sanitized = sanitizeChunks(safeChunks);
     
     // Merge graph knowledge into the context block
-    let contextBlock = wrapInContextBlock(safeChunks);
+    let contextBlock = wrapInContextBlock(sanitized);
     if (relatedTriples.length > 0) {
       const graphText = relatedTriples.map(t => `- ${t.subject} ${t.relation} ${t.object}`).join("\n");
       contextBlock = `<synq_graph_knowledge>\n${graphText}\n</synq_graph_knowledge>\n\n${contextBlock}`;
     }
 
-    logger.success(`RAG: ${safeChunks.length} chunk(s) and ${relatedTriples.length} graph triple(s) found`);
+    logger.success(`RAG: Budget filled (${currentChars}/${MAX_TOTAL_CHARS} chars). ${sanitized.length} chunks used.`);
 
     res.json({
       found: true,
-      chunks:      safeChunks,
+      chunks:      sanitized,
       graphFacts:  relatedTriples,
       contextBlock,
-      chunksFound: safeChunks.map(c => c.chunkIndex),
-      scores:      safeChunks.map(c => c.score),
+      chunksFound: sanitized.map(c => c.chunkIndex),
+      scores:      sanitized.map(c => c.score),
     });
   } catch (err) {
     logger.error("RAG error:", err);
@@ -95,27 +105,41 @@ router.post("/global", async (req: Request, res: Response) => {
     return;
   }
 
-  topN = Math.max(1, Math.min(Number(topN) || 2, 4));
+  // v1.4.4: Character-based context budgeting
+  const MAX_TOTAL_CHARS = 4000; // Lower for global to avoid noisy context
 
   try {
-    logger.info(`Global RAG retrieve (topN=${topN}): "${String(prompt).slice(0, 60)}..."`);
+    logger.info(`RAG Global (budget=${MAX_TOTAL_CHARS}): "${String(prompt).slice(0, 60)}..."`);
 
-    const rawChunks = await vectorStore.retrieveGlobalChunks(prompt, topN);
+    // Retrieve a larger candidate pool
+    const candidateChunks = await vectorStore.retrieveGlobalChunks(prompt, 8);
 
-    if (rawChunks.length === 0) {
+    if (candidateChunks.length === 0) {
       res.json({ found: false, chunks: [] });
       return;
     }
 
-    const safeChunks = sanitizeChunks(rawChunks);
-    const contextBlock = wrapInContextBlock(safeChunks, true);
+    // Fill budget
+    const safeChunks: RetrievedChunk[] = [];
+    let currentChars = 0;
 
-    logger.success(`Global RAG: ${safeChunks.length} chunk(s) found`);
+    for (const chunk of candidateChunks) {
+      if (currentChars + chunk.content.length > MAX_TOTAL_CHARS) break;
+      safeChunks.push(chunk);
+      currentChars += chunk.content.length;
+    }
+
+    // Sanitise and wrap
+    const sanitized = sanitizeChunks(safeChunks);
+    const contextBlock = wrapInContextBlock(sanitized);
+
+    logger.success(`RAG Global: Budget filled (${currentChars}/${MAX_TOTAL_CHARS} chars). ${sanitized.length} chunks used.`);
 
     res.json({
       found: true,
-      chunks: safeChunks,
+      chunks: sanitized,
       contextBlock,
+      scores: sanitized.map(c => c.score),
     });
   } catch (err) {
     logger.error("Global RAG error:", err);

@@ -4,6 +4,17 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ---
 
+## [1.4.4] — 2026-05-10 — Architectural Hardening
+
+### Retrieval & Process
+- **RAG Benchmarking** — Introduced a quantitative harness to measure retrieval accuracy.
+- **Context Budgeting** — Character-based context window management.
+- **Memory Decay** — Time-based relevance scoring for aging conversations.
+- **Data Portability** — Session export and import functionality.
+- **Test Coverage** — Expanded unit tests for DOM resolvers and extraction logic.
+
+---
+
 ## [1.4.3] — 2026-05-09 — Hybrid Search & MCP Evolution
 
 ### Retrieval & Intelligence
@@ -42,7 +53,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ---
 
-## [1.4.2] — 2026-05-05 — Expanding Platform Support
+## [1.4.1] — 2026-05-05 — Expanding Platform Support
 
 ### Supported Platforms
 
@@ -56,7 +67,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ### Version Alignment
 
-- Unified project versioning across extension manifest, extension package, backend, and dashboard to `1.4.2`.
+- Unified project versioning across extension manifest, extension package, backend, and dashboard to `1.4.1`.
 
 
 ## [1.4.0] — 2026-05-03 — Security, MCP & Production Hardening
