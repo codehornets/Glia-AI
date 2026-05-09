@@ -8,5 +8,11 @@
   "collectCoverageFrom": [
     "src/utils/**/*.ts",
     "src/services/**/*.ts"
-  ]
+  ],
+  "transformIgnorePatterns": [
+    "node_modules/(?!(uuid)/)"
+  ],
+  "moduleNameMapper": {
+    "^uuid$": "uuid"
+  }
 }

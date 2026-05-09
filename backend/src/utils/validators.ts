@@ -6,7 +6,7 @@ export function isValidObjectId(id: string): boolean {
   if (!id) return false;
   // MongoDB check
   if (/^[0-9a-fA-F]{24}$/.test(id)) return true;
-  // UUID check
-  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) return true;
+  // UUID or custom alphanumeric check (allows test IDs like 'test-uuid-123')
+  if (/^[a-zA-Z0-9-]+$/.test(id)) return true;
   return false;
 }

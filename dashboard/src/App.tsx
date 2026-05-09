@@ -4,8 +4,6 @@ import ChatViewer from "./components/ChatViewer";
 import { fetchContext, fetchSessions, setActiveSession as setActiveSessionOnBackend, deleteSession, extractErrorMessage, apiClient } from "./api/synq";
 import { fetchFullChat } from "./api/rag";
 
-
-
 interface Node { id: string; type: string; }
 interface Link { source: string; target: string; relation: string; }
 interface Triple {
@@ -46,9 +44,8 @@ export default function App() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isClosed, setIsClosed] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [graphTypeFilter, setGraphTypeFilter] = useState<string | null>(null);
+  const [graphTypeFilter, setGraphTypeFilter] = useState<string | null>(null); // visual only, not sent to backend
   const [sessionSearch, setSessionSearch] = useState("");
-  const [factsSearch, setFactsSearch] = useState("");
   const [factsPage, setFactsPage] = useState(0);
   const [jobStatus, setJobStatus] = useState({ pending: 0, processing: 0, deadLettered: 0 });
   const PAGE_SIZE = 50;
@@ -66,13 +63,13 @@ export default function App() {
     }
   }, []);
 
-  const loadSession = useCallback(async (session: Session, typeFilter?: string | null) => {
+  const loadSession = useCallback(async (session: Session) => {
     setActiveSession(session);
     setLoadingSession(true);
     setChatData(null);
     isLoadingSessionRef.current = true;
     try {
-      const graphUrl = `/api/graph/session/${session._id}${typeFilter ? `?type=${typeFilter}` : ""}`;
+      const graphUrl = `/api/graph/session/${session._id}`;
       const [graphRes, contextData, chatResult] = await Promise.all([
         apiClient.get(graphUrl),
         fetchContext(session._id),
@@ -93,6 +90,7 @@ export default function App() {
       console.error(`Failed to load session: ${extractErrorMessage(err)}`);
     } finally {
       setSelectedNodeId(null);
+      setGraphTypeFilter(null);
       setLoadingSession(false);
       isLoadingSessionRef.current = false;
     }
@@ -177,13 +175,9 @@ export default function App() {
       timer = setInterval(poll, 3000);
     }
     return () => clearInterval(timer);
-  }, [activeSession?.isProcessingGraph, loadSessions, loadSession, activeSession, graphTypeFilter]);
-
-  useEffect(() => {
-    if (activeSession) {
-      loadSession(activeSession, graphTypeFilter);
-    }
-  }, [graphTypeFilter]);
+  }, [activeSession?.isProcessingGraph, loadSessions, loadSession, activeSession]);
+  // Type filter is now handled strictly visually in GraphView, 
+  // so we no longer reload from the backend when graphTypeFilter changes.
 
   const handleClearJobs = async () => {
     try {
@@ -199,10 +193,7 @@ export default function App() {
   );
 
   const filteredTriples = triples
-    .filter(t => !selectedNodeId || t.subject === selectedNodeId || t.object === selectedNodeId)
-    .filter(t => !factsSearch || [t.subject, t.object, t.relation].some(v =>
-      v.toLowerCase().includes(factsSearch.toLowerCase())
-    ));
+    .filter(t => !selectedNodeId || t.subject === selectedNodeId || t.object === selectedNodeId);
 
   const pagedTriples = filteredTriples.slice(factsPage * PAGE_SIZE, (factsPage + 1) * PAGE_SIZE);
   const totalPages = Math.ceil(filteredTriples.length / PAGE_SIZE);
@@ -468,17 +459,6 @@ export default function App() {
               {/* History tab */}
               {activeTab === "history" && (
                 <div className="history-tab-container">
-                  <div className="facts-header">
-                    <input
-                      className="search-input"
-                      placeholder="Search facts..."
-                      value={factsSearch}
-                      onChange={(e) => {
-                        setFactsSearch(e.target.value);
-                        setFactsPage(0);
-                      }}
-                    />
-                  </div>
                   <div className="history-list">
                   {loadingSession ? (
                     <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
