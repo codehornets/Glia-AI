@@ -180,7 +180,10 @@ async function _llm(prompt: string, maxTokens = 1000): Promise<string> {
         try {
           res = await callOllama(prompt, maxTokens);
         } catch (err: any) {
-          const isDown = err.code === "ECONNREFUSED" || err.code === "ENOTFOUND";
+          const isDown = err.code === "ECONNREFUSED" || 
+                         err.code === "ENOTFOUND" || 
+                         err.message?.includes("ECONNREFUSED") || 
+                         err.message?.includes("connection refused");
           if (isDown && process.env.GROQ_API_KEY) {
             logger.warn(`[SYNQ] Ollama unreachable — falling back to Groq.`);
             res = await callGroq(prompt, maxTokens);
@@ -192,7 +195,11 @@ async function _llm(prompt: string, maxTokens = 1000): Promise<string> {
         try {
           res = await callLocalOpenAI(prompt, maxTokens);
         } catch (err: any) {
-          if (err.code === "ECONNREFUSED" && process.env.GROQ_API_KEY) {
+          const isDown = err.code === "ECONNREFUSED" || 
+                         err.code === "ENOTFOUND" || 
+                         err.message?.includes("ECONNREFUSED") || 
+                         err.message?.includes("connection refused");
+          if (isDown && process.env.GROQ_API_KEY) {
             logger.warn(`[SYNQ] Local OpenAI unreachable — falling back to Groq.`);
             res = await callGroq(prompt, maxTokens);
           } else {

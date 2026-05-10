@@ -25,8 +25,13 @@ describe("Entity Extractor", () => {
   });
 
   it("should fallback to Groq if Ollama fails", async () => {
-    // Ollama fails
-    mockedAxios.post.mockRejectedValueOnce(new Error("Ollama connection refused"));
+    // 1. Ollama is detected initially
+    mockedAxios.get.mockResolvedValueOnce({ data: { models: [] } });
+    
+    // 2. Ollama fails during the actual call
+    const connErr = new Error("Ollama connection refused");
+    (connErr as any).code = "ECONNREFUSED";
+    mockedAxios.post.mockRejectedValueOnce(connErr);
     // Groq succeeds
     mockedAxios.post.mockResolvedValueOnce({
       data: {
