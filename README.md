@@ -155,7 +155,7 @@ The dashboard is a production build served by the backend — no separate window
 
 ## MCP Server
 
-> **v1.4.2** — SYNQ now works in any MCP-compatible AI tool.
+> **v1.4.4** — SYNQ now works in any MCP-compatible AI tool.
 
 Build the backend first:
 ```bash

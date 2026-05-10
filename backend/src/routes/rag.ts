@@ -1,11 +1,4 @@
-/**
- * rag.ts (backend route) — v1.4.3
- *
- * v1.4.3 changes:
- * - Implemented Hybrid Retrieval (Vector + Knowledge Graph).
- *
- * Updated: v1.4.3
- */
+// rag.ts (backend route) — v1.4.4
 
 import { Router, Request, Response } from "express";
 import { vectorStore, graphStore, RetrievedChunk } from "../services/storage";
@@ -72,12 +65,12 @@ router.post("/retrieve", async (req: Request, res: Response) => {
 
     // Sanitise (redact injection patterns) then wrap in XML delimiters
     const sanitized = sanitizeChunks(safeChunks);
-    
+
     // v1.4.4: Snippet Extraction
     const rawContent = sanitized.map(c => c.content);
     const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
-    
-    let contextBlock = snippetContext 
+
+    let contextBlock = snippetContext
       ? `<synq_extracted_snippets>\n${snippetContext}\n</synq_extracted_snippets>`
       : wrapInContextBlock(sanitized);
     if (relatedTriples.length > 0) {
@@ -89,11 +82,11 @@ router.post("/retrieve", async (req: Request, res: Response) => {
 
     res.json({
       found: true,
-      chunks:      sanitized,
-      graphFacts:  relatedTriples,
+      chunks: sanitized,
+      graphFacts: relatedTriples,
       contextBlock,
       chunksFound: sanitized.map(c => c.chunkIndex),
-      scores:      sanitized.map(c => c.score),
+      scores: sanitized.map(c => c.score),
     });
   } catch (err) {
     logger.error("RAG error:", err);
@@ -136,12 +129,12 @@ router.post("/global", async (req: Request, res: Response) => {
 
     // Sanitise and wrap
     const sanitized = sanitizeChunks(safeChunks);
-    
+
     // v1.4.4: Snippet Extraction
     const rawContent = sanitized.map(c => c.content);
     const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
-    
-    const contextBlock = snippetContext 
+
+    const contextBlock = snippetContext
       ? `<synq_extracted_snippets>\n${snippetContext}\n</synq_extracted_snippets>`
       : wrapInContextBlock(sanitized);
 

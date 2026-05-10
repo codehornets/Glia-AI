@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SYNQ v1.4.2 - Smart Installer (Linux/macOS)
+# SYNQ v1.4.4 - Smart Installer (Linux/macOS)
 # -------------------------------------------
 
 set -e

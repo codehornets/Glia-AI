@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SYNQ v1.4.2 - Startup Script (Linux/macOS)
+# SYNQ v1.4.4 - Startup Script (Linux/macOS)
 # ------------------------------------------
 
 set -e

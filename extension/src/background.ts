@@ -1,5 +1,5 @@
 /**
- * background.ts — v1.2
+ * background.ts — v1.4.4
  */
 
 import { SynqMessage } from "./types/messages";
