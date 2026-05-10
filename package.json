@@ -1,6 +1,6 @@
 {
   "name": "synq-setup",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Smart, local-first RAG and Knowledge Graph for AI conversations.",
   "main": "index.js",
   "bin": {
