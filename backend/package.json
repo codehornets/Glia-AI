@@ -12,8 +12,7 @@
     "test:integration": "jest --config jest.config.json tests/pipeline.integration.test.ts",
     "test:coverage": "jest --config jest.config.json --coverage",
     "mcp:config": "ts-node src/mcp/config-gen.ts",
-    "benchmark:rag": "ts-node src/scripts/benchmark-rag.ts",
-    "test:offline": "ts-node src/scripts/offline-test.ts"
+    "benchmark:rag": "ts-node src/scripts/benchmark-rag.ts"
   },
   "keywords": [],
   "author": "",
