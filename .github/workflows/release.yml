@@ -29,16 +29,27 @@ jobs:
 
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full release notes.
 
-            ### Setup
+            ### One-Command Setup (Recommended)
+            ```bash
+            npx synq-setup
+            ```
+
+            ### Manual Setup
             ```bash
             git clone https://github.com/${{ github.repository }}.git
             cd Synq
-            ./install.sh   # Linux/macOS
-            # or 
-            start.bat  # Windows
+
+            # Installation
+            ./install.sh # Linux/macOS
+            ./install.bat # Windows
+            
+            # Regular Start
+            ./start.sh # Linux/macOS
+            ./start.bat # Windows
             ```
 
             ### Load the Extension
             1. After installation, open `chrome://extensions`
             2. Enable **Developer mode**
             3. **Load unpacked** → select `Synq/extension`
+            4. SYNQ will automatically open the folder and page for you at the end of setup.
