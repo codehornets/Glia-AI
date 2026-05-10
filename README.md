@@ -15,7 +15,7 @@ Every time you open a new chat, your AI starts from zero. SYNQ gives your AI per
 [![Issues](https://img.shields.io/github/issues/Eshaan-Nair/Synq?style=for-the-badge&logo=github&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/Synq/issues)
 [![CI](https://img.shields.io/github/actions/workflow/status/Eshaan-Nair/Synq/integration-tests.yml?style=for-the-badge&label=CI&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/Synq/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.3-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.4-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 
 <br/>
 
@@ -60,7 +60,7 @@ SYNQ captures your conversations, distills them into a semantic knowledge graph,
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Privacy and Security](#privacy-and-security)
-- [Whats New in v1.4.3](#whats-new-in-v143)
+- [Whats New in v1.4.4](#whats-new-in-v144)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -321,14 +321,13 @@ See [SECURITY.md](SECURITY.md) for the full threat model and vulnerability repor
 
 ---
 
-## Whats New in v1.4.3
+## Whats New in v1.4.4
 
-- **Hybrid Search (Vector + Graph)** — Both Dashboard and MCP now use graph knowledge to enrich RAG results
-- **Smart Project Detection** — Automatically identify project IDs based on your CWD or folder name
-- **Dashboard Visibility for MCP** — Terminal conversations are now saved to project history and visible in the UI
-- **MCP Resources** — Browse your knowledge graph as a structured document in AI tools
-- **Zero-Docker Stability** — Full SQLite-native support is now the default and passing all CI checks
-- **LLM Fallbacks** — Extraction tools now fallback gracefully to vector mode if Ollama/Groq is offline
+- **Architectural Hardening** — Resolved UI deadlocks, ghost jobs, and implemented robust API polling routes
+- **Data Portability** — Export and import entire sessions (with chat history and graphs) as JSON directly from the Dashboard
+- **Context Budgeting** — Character-based context window management to prevent LLM overflow
+- **Memory Decay** — Time-based relevance scoring for aging conversations
+- **Test Coverage & Benchmarking** — Expanded unit test suite and introduced a quantitative RAG benchmarking harness
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

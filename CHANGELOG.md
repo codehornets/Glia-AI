@@ -11,7 +11,9 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 - **Context Budgeting** — Character-based context window management.
 - **Memory Decay** — Time-based relevance scoring for aging conversations.
 - **Data Portability** — Session export and import functionality.
+- **Bug Fixes** — Resolved UI deadlocks caused by missing polling routes and ghost jobs remaining in the queue after a backend restart.
 - **Test Coverage** — Expanded unit tests for DOM resolvers and extraction logic.
+
 
 ---
 

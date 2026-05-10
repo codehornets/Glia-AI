@@ -118,7 +118,7 @@ const TOOLS = [
 
 // ── Server setup ────────────────────────────────────────────────────
 const server = new Server(
-  { name: "synq-memory", version: "1.4.3" },
+  { name: "synq-memory", version: "1.4.4" },
   { capabilities: { tools: {}, resources: {} } }
 );
 
