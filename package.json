@@ -1,0 +1,32 @@
+{
+  "name": "synq-setup",
+  "version": "1.4.5",
+  "description": "Smart, local-first RAG and Knowledge Graph for AI conversations.",
+  "main": "index.js",
+  "bin": {
+    "synq-setup": "bin/setup.js"
+  },
+  "files": [
+    "bin/",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "setup": "node bin/setup.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eshaan-Nair/Synq.git"
+  },
+  "keywords": [
+    "synq",
+    "ai",
+    "memory",
+    "rag",
+    "knowledge-graph",
+    "ollama",
+    "groq"
+  ],
+  "author": "Eshaan Nair",
+  "license": "MIT"
+}
