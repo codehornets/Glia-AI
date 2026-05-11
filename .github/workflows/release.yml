@@ -31,7 +31,11 @@ jobs:
 
             ### One-Command Setup (Recommended)
             ```bash
-            npx glia-setup
+            npx glia-ai-setup
+            ```
+            # Regular Start
+            ./start.sh # Linux/macOS
+            ./start.bat # Windows
             ```
 
             ### Manual Setup
