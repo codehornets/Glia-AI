@@ -125,8 +125,32 @@ body {
 }
 
 .sidebar-header {
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  text-align: center;
   background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: var(--text-main);
+  text-transform: uppercase;
+}
+
+.sidebar-subtitle {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.sidebar-tabs-container {
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-tabs {

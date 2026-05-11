@@ -280,15 +280,19 @@ export default function App() {
         {/* ── Sidebar ───────────────────────────────────────────────── */}
         <div className="sidebar floating-panel">
           <div className="sidebar-header">
+            <div className="sidebar-title">Glia</div>
+            <div className="sidebar-subtitle">AI Memory Layer</div>
+          </div>
+          <div className="sidebar-tabs-container">
             <div className="sidebar-tabs">
-              <button 
-                className={`sidebar-tab ${sidebarTab === "projects" ? "active" : ""}`} 
+              <button
+                className={`sidebar-tab ${sidebarTab === "projects" ? "active" : ""}`}
                 onClick={() => setSidebarTab("projects")}
               >
                 Projects
               </button>
-              <button 
-                className={`sidebar-tab ${sidebarTab === "legend" ? "active" : ""}`} 
+              <button
+                className={`sidebar-tab ${sidebarTab === "legend" ? "active" : ""}`}
                 onClick={() => setSidebarTab("legend")}
               >
                 Legend
@@ -376,8 +380,8 @@ export default function App() {
                 ) : (
                   <div className="legend-items">
                     {[...new Set(nodes.map(n => n.type))].map(type => (
-                      <div 
-                        key={type} 
+                      <div
+                        key={type}
                         className={`legend-sidebar-item ${graphTypeFilter === type ? "active" : ""}`}
                         onClick={() => setGraphTypeFilter(graphTypeFilter === type ? null : type)}
                       >
