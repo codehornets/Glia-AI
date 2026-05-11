@@ -94,7 +94,7 @@ All other origins receive a CORS rejection. `null` origin (curl, Postman) is all
 | Input validation | sessionId as ObjectId, platform as enum, text length |
 | Body limit | 5 MB on express.json |
 | Security headers | helmet on every response |
-| Shared secret | Optional X-GLIA-Secret header |
+| Shared secret | Removed in v1.4.7 |
 | Local-first | All data in Docker volumes; Ollama primary backend |
 
 ---

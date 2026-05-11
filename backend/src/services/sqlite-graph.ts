@@ -85,7 +85,15 @@ export class SqliteGraphStore implements IGraphStore {
       });
     }
 
-    // Assign basic communities based on connected components
+    // v1.4.7: Optimized community detection using an adjacency list (O(V + E))
+    const adj = new Map<string, string[]>();
+    for (const link of links) {
+      if (!adj.has(link.source)) adj.set(link.source, []);
+      if (!adj.has(link.target)) adj.set(link.target, []);
+      adj.get(link.source)!.push(link.target);
+      adj.get(link.target)!.push(link.source);
+    }
+
     const visited = new Set<string>();
     let communityCounter = 0;
     const nodeIds = Array.from(nodes.keys());
@@ -102,14 +110,11 @@ export class SqliteGraphStore implements IGraphStore {
         const node = nodes.get(currentId);
         if (node) node.community = communityCounter;
         
-        // Find neighbors
-        for (const link of links) {
-          if (link.source === currentId && !visited.has(link.target)) {
-            visited.add(link.target);
-            queue.push(link.target);
-          } else if (link.target === currentId && !visited.has(link.source)) {
-            visited.add(link.source);
-            queue.push(link.source);
+        const neighbors = adj.get(currentId) || [];
+        for (const neighborId of neighbors) {
+          if (!visited.has(neighborId)) {
+            visited.add(neighborId);
+            queue.push(neighborId);
           }
         }
       }

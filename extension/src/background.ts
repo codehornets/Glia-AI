@@ -6,27 +6,18 @@ import { GliaMessage } from "./types/messages";
 
 // v1.4.2+: Configurable backend URL and secret via storage
 async function getBackendConfig() {
-  const r = await chrome.storage.local.get(["glia_backend_url", "glia_secret"]);
+  const r = await chrome.storage.local.get(["glia_backend_url"]);
   return {
-    url: (String(r.glia_backend_url || "http://localhost:3001")).replace(/\/$/, ""),
-    secret: String(r.glia_secret || "")
+    url: (String(r.glia_backend_url || "http://localhost:3001")).replace(/\/$/, "")
   };
 }
 
-/**
- * gliaFetch — wrapper around fetch that injects the configurable backend URL
- * and the X-GLIA-Secret auth header if present.
- */
 async function gliaFetch(path: string, options: RequestInit = {}) {
-  const { url, secret } = await getBackendConfig();
+  const { url } = await getBackendConfig();
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   } as Record<string, string>;
-
-  if (secret) {
-    headers["X-GLIA-Secret"] = secret;
-  }
 
   return fetch(`${url}${path}`, {
     ...options,

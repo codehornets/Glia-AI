@@ -314,7 +314,7 @@ Ollama is the **primary** extraction backend — fully local. Groq is an automat
 | CORS | `localhost:3001`, `localhost:5173`, `chrome-extension://` only |
 | Input validation | sessionId as ObjectId, platform as enum, text length enforced |
 | Security headers | helmet on every response |
-| Shared secret | Optional `X-GLIA-Secret` header |
+| Shared secret | Removed in v1.4.7 |
 
 See [SECURITY.md](SECURITY.md) for the full threat model and vulnerability reporting policy.
 

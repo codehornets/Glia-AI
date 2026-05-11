@@ -148,7 +148,7 @@ GLIA_SECRET=your-random-secret-here
 
 The extension and all API clients must then include the header:
 ```
-X-GLIA-Secret: your-random-secret-here
+// Authentication is now managed at the network/proxy level if needed.
 ```
 
 ---
