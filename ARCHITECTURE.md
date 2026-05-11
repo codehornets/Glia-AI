@@ -82,7 +82,7 @@ AI tool (Cursor/Claude Code/etc.) → MCP stdio call
 | Security headers | helmet on every response |
 | PII scrubbing | `src/utils/privacy.ts` — runs before any transmission |
 | Prompt injection | `src/middleware/sanitize.ts` — 10 pattern scan + XML context delimiters |
-| Shared secret | Optional `X-GLIA-Secret` header — when `GLIA_SECRET` is set, all non-health requests authenticated |
+| Shared secret | Removed in v1.4.7 (Optimized for local-first usage) |
 
 ---
 

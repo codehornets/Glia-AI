@@ -37,7 +37,7 @@ export function chunkText(text: string): string[] {
   return chunks;
 }
 
-// ── v1.4.6: Smart Backend Selection ───────────────────────────────
+// ── v1.4.7: Smart Backend Selection ───────────────────────────────
 //
 // Priority:
 //   1. GRAPH_BACKEND env var (explicit override — "ollama" | "groq" | "local-openai")

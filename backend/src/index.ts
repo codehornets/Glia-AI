@@ -103,31 +103,7 @@ const saveLimiter = rateLimit({
 // #14: Security headers via helmet
 app.use(helmet({ contentSecurityPolicy: false })); // CSP off — API-only server, no HTML
 
-// #3: Shared-secret auth — extension and dashboard set X-GLIA-Secret header
-// Flip the default to secure — require an explicit GLIA_NO_AUTH=true to disable
-const GLIA_SECRET = process.env.GLIA_SECRET;
-const NO_AUTH = process.env.GLIA_NO_AUTH === "true";
-
-if (GLIA_SECRET && !NO_AUTH) {
-  app.use((req, res, next) => {
-    // Only enforce auth on API routes. Static dashboard assets and health check are public.
-    if (!req.path.startsWith("/api") || req.path === "/health") return next();
-
-    const provided = req.headers["x-glia-secret"] || req.query.secret;
-    if (provided !== GLIA_SECRET) {
-      logger.warn(`Auth failed: provided=${String(provided).slice(0, 4)}... expected=${String(GLIA_SECRET).slice(0, 4)}...`);
-      res.status(401).json({ error: "Unauthorized — invalid or missing X-GLIA-Secret" });
-      return;
-    }
-    next();
-  });
-  logger.info("Request auth enabled (X-GLIA-Secret) for /api/*");
-} else {
-  logger.warn("Request auth is DISABLED — anyone with access to this URL can read/write data.");
-  if (!NO_AUTH) {
-    logger.info("Tip: Set GLIA_SECRET in backend/.env to enable authentication.");
-  }
-}
+// v1.4.7: Auth middleware removed for better local-first UX
 
 // Apply global rate limit across ALL routes (200 req/min per IP)
 app.use(globalLimiter);
@@ -145,7 +121,7 @@ app.use("/api/jobs", jobsRoutes);
 app.get("/health", (_req, res) => {
   res.json({
     status: "GLIA backend running",
-    version: "1.4.6",
+    version: "1.4.7",
     services: {
       backend: "ok",
       port: PORT,

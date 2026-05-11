@@ -2,20 +2,11 @@ import axios from "axios";
 
 // v1.4.6+: Configurable backend URL and auth secret via environment variables
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
-export const SECRET = import.meta.env.VITE_GLIA_SECRET || "";
-
 export const apiClient = axios.create({
   baseURL: BACKEND,
   headers: {
     "Content-Type": "application/json"
   }
-});
-
-apiClient.interceptors.request.use(config => {
-  if (SECRET) {
-    config.headers["X-GLIA-Secret"] = SECRET;
-  }
-  return config;
 });
 
 // Helper to extract clean error messages
