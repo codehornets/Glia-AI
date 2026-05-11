@@ -71,11 +71,11 @@ router.post("/retrieve", async (req: Request, res: Response) => {
     const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
 
     let contextBlock = snippetContext
-      ? `<synq_extracted_snippets>\n${snippetContext}\n</synq_extracted_snippets>`
+      ? `<glia_extracted_snippets>\n${snippetContext}\n</glia_extracted_snippets>`
       : wrapInContextBlock(sanitized);
     if (relatedTriples.length > 0) {
       const graphText = relatedTriples.map(t => `- ${t.subject} ${t.relation} ${t.object}`).join("\n");
-      contextBlock = `<synq_graph_knowledge>\n${graphText}\n</synq_graph_knowledge>\n\n${contextBlock}`;
+      contextBlock = `<glia_graph_knowledge>\n${graphText}\n</glia_graph_knowledge>\n\n${contextBlock}`;
     }
 
     logger.success(`RAG: Budget filled (${currentChars}/${MAX_TOTAL_CHARS} chars). ${sanitized.length} chunks used.`);
@@ -135,7 +135,7 @@ router.post("/global", async (req: Request, res: Response) => {
     const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
 
     const contextBlock = snippetContext
-      ? `<synq_extracted_snippets>\n${snippetContext}\n</synq_extracted_snippets>`
+      ? `<glia_extracted_snippets>\n${snippetContext}\n</glia_extracted_snippets>`
       : wrapInContextBlock(sanitized);
 
     logger.success(`RAG Global: Budget filled (${currentChars}/${MAX_TOTAL_CHARS} chars). ${sanitized.length} chunks used.`);

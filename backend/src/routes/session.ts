@@ -35,7 +35,7 @@ router.get("/export/:id", async (req: Request, res: Response) => {
     };
 
     res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="synq-session-${sessionId}.json"`);
+    res.setHeader("Content-Disposition", `attachment; filename="glia-session-${sessionId}.json"`);
     res.send(JSON.stringify(exportData, null, 2));
   } catch (err) {
     logger.error("Export error:", err);

@@ -1,4 +1,4 @@
-# SYNQ — Changelog
+# GLIA — Changelog
 
 All notable changes documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -7,7 +7,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 ## [1.4.5] — 2026-05-11 — Frictionless Setup & UI Refinement
 
 ### Installation & UX
-- **One-Command Setup** — Introduced `npx synq-setup` to automate repository cloning and installation.
+- **One-Command Setup** — Introduced `npx glia-setup` to automate repository cloning and installation.
 - **Automated Extension Loading** — The installer now automatically opens the extension folder and the Chrome extensions page.
 - **Smart URL Mapping** — Enhanced session persistence across varied platform URL formats (e.g. shared chats).
 
@@ -39,11 +39,11 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 ### Retrieval & Intelligence
 - **Hybrid Search (Vector + Graph)** — Both the Dashboard and MCP server now perform Hybrid Retrieval. The system extracts entities from user prompts and queries the Knowledge Graph for structured facts, combining them with semantic vector chunks.
 - **Global Hybrid Search** — `search_memory` now performs cross-project graph scans, improving discovery across multiple repositories.
-- **Smart Project Detection** — Added `identify_active_project` MCP tool to automatically match a terminal's CWD to a Synq project ID.
+- **Smart Project Detection** — Added `identify_active_project` MCP tool to automatically match a terminal's CWD to a Glia project ID.
 
 ### MCP (Model Context Protocol) Improvements
 - **Dashboard Visibility** — Manual saves from MCP-compatible tools (Claude Code, Cursor) are now saved to the `full_chats` table and appear in the Dashboard history.
-- **MCP Resources** — Exposed the entire Knowledge Graph as a browsable MCP Resource (`synq://projects/{id}/graph`).
+- **MCP Resources** — Exposed the entire Knowledge Graph as a browsable MCP Resource (`glia://projects/{id}/graph`).
 - **LLM Robustness** — Implemented try/catch fallbacks for AI extraction. If Ollama/Groq is unavailable, tools fallback gracefully to vector-only mode.
 - **Config Generator** — Added `npm run mcp:config` to automatically generate absolute path configurations for AI tools.
 
@@ -57,8 +57,8 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ### Storage Architecture
 - **Unified Storage Interface** — Introduced `ISessionStore`, `IGraphStore`, and `IVectorStore` interfaces.
-- **SQLite Support** — Implemented `better-sqlite3` and `sqlite-vec` backends, allowing Synq to run without Docker (MongoDB, Neo4j, ChromaDB).
-- **Dynamic Storage Factory** — Added `SYNQ_STORAGE_MODE` (docker/sqlite) to `.env` to toggle between legacy Docker and new local storage.
+- **SQLite Support** — Implemented `better-sqlite3` and `sqlite-vec` backends, allowing Glia to run without Docker (MongoDB, Neo4j, ChromaDB).
+- **Dynamic Storage Factory** — Added `GLIA_STORAGE_MODE` (docker/sqlite) to `.env` to toggle between legacy Docker and new local storage.
 
 ### Onboarding & Deployment
 - **Zero-Docker Fallback** — `install.bat` and `install.sh` now automatically detect if Docker is missing/not running and default to SQLite mode.
@@ -94,7 +94,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 ### Security
 
 - **Prompt injection defence** — `backend/src/middleware/sanitize.ts` scans every retrieved RAG chunk for 10 known injection patterns before it reaches any AI. Matching content is replaced with `[Content redacted: potential prompt injection pattern detected]`
-- **XML context delimiters** — all injected context is wrapped in `<synq_retrieved_context>` XML tags. LLMs treat XML-tagged content as structured data rather than executable instructions
+- **XML context delimiters** — all injected context is wrapped in `<glia_retrieved_context>` XML tags. LLMs treat XML-tagged content as structured data rather than executable instructions
 - **SECURITY.md** — expanded with prompt injection threat model and Groq privacy disclosure
 
 ### MCP Server — Universal Memory Layer
@@ -152,7 +152,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ## [1.3.3] — 2026-05-03 — Startup Robustness
 
-- Forced Docker Compose project name to `synq` — prevents errors when the repository folder has dots or version numbers in the name
+- Forced Docker Compose project name to `glia` — prevents errors when the repository folder has dots or version numbers in the name
 - Removed Unicode box-drawing characters from `start.bat` that caused rendering errors in Windows CMD
 
 ---
@@ -172,7 +172,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 - Multi-save support — same chat can be saved multiple times without duplicate sessions
 - Unload Session button — explicitly disconnect from active session
 - Pause/Resume always visible in compact UI layout
-- Badge toggle — click the SYNQ badge to toggle on/off instantly
+- Badge toggle — click the GLIA badge to toggle on/off instantly
 - Save button contrast fix
 
 ---

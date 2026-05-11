@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "SYNQ - Context Sovereignty Engine",
+  "name": "GLIA - Context Sovereignty Engine",
   "version": "1.4.5",
   "description": "Persistent memory layer for AI chats",
   "permissions": [

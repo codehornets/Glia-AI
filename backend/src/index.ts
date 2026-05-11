@@ -20,7 +20,7 @@ import jobsRoutes from "./routes/jobs";
 
 // ── #9: .env validation — fail fast with a clear message ──────────
 function validateEnv() {
-  const STORAGE_MODE = (process.env.SYNQ_STORAGE_MODE || "docker").toLowerCase();
+  const STORAGE_MODE = (process.env.GLIA_STORAGE_MODE || "docker").toLowerCase();
 
   if (STORAGE_MODE === "docker") {
     // NEO4J, MONGO are only required in Docker mode
@@ -28,7 +28,7 @@ function validateEnv() {
       NEO4J_URI: "e.g. bolt://localhost:7687",
       NEO4J_USER: "e.g. neo4j",
       NEO4J_PASSWORD: "Set in backend/.env",
-      MONGO_URI: "e.g. mongodb://user:pass@localhost:27017/synqdb",
+      MONGO_URI: "e.g. mongodb://user:pass@localhost:27017/gliadb",
     };
     if (process.env.GRAPH_BACKEND === "groq") {
       required["GROQ_API_KEY"] = "Get a free key at https://console.groq.com";
@@ -37,7 +37,7 @@ function validateEnv() {
     if (missing.length > 0) {
       logger.error("Missing required environment variables for DOCKER mode:");
       missing.forEach(([k, hint]) => logger.error(`  ${k} — ${hint}`));
-      logger.error("Set SYNQ_STORAGE_MODE=sqlite to use Zero-Docker mode instead.");
+      logger.error("Set GLIA_STORAGE_MODE=sqlite to use Zero-Docker mode instead.");
       process.exit(1);
     }
   } else {
@@ -78,7 +78,7 @@ app.use(cors({
     callback(new Error(`CORS: Origin ${origin} not allowed`));
   },
   methods: ["GET", "POST", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-SYNQ-Secret"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-GLIA-Secret"],
 }));
 // Issue #13 Fix: Rate limiting to prevent abuse of the expensive LLM pipeline
 // Global limiter: 200 requests per minute per IP across all endpoints
@@ -103,29 +103,29 @@ const saveLimiter = rateLimit({
 // #14: Security headers via helmet
 app.use(helmet({ contentSecurityPolicy: false })); // CSP off — API-only server, no HTML
 
-// #3: Shared-secret auth — extension and dashboard set X-SYNQ-Secret header
-// Flip the default to secure — require an explicit SYNQ_NO_AUTH=true to disable
-const SYNQ_SECRET = process.env.SYNQ_SECRET;
-const NO_AUTH = process.env.SYNQ_NO_AUTH === "true";
+// #3: Shared-secret auth — extension and dashboard set X-GLIA-Secret header
+// Flip the default to secure — require an explicit GLIA_NO_AUTH=true to disable
+const GLIA_SECRET = process.env.GLIA_SECRET;
+const NO_AUTH = process.env.GLIA_NO_AUTH === "true";
 
-if (SYNQ_SECRET && !NO_AUTH) {
+if (GLIA_SECRET && !NO_AUTH) {
   app.use((req, res, next) => {
     // Only enforce auth on API routes. Static dashboard assets and health check are public.
     if (!req.path.startsWith("/api") || req.path === "/health") return next();
 
-    const provided = req.headers["x-synq-secret"] || req.query.secret;
-    if (provided !== SYNQ_SECRET) {
-      logger.warn(`Auth failed: provided=${String(provided).slice(0, 4)}... expected=${String(SYNQ_SECRET).slice(0, 4)}...`);
-      res.status(401).json({ error: "Unauthorized — invalid or missing X-SYNQ-Secret" });
+    const provided = req.headers["x-glia-secret"] || req.query.secret;
+    if (provided !== GLIA_SECRET) {
+      logger.warn(`Auth failed: provided=${String(provided).slice(0, 4)}... expected=${String(GLIA_SECRET).slice(0, 4)}...`);
+      res.status(401).json({ error: "Unauthorized — invalid or missing X-GLIA-Secret" });
       return;
     }
     next();
   });
-  logger.info("Request auth enabled (X-SYNQ-Secret) for /api/*");
+  logger.info("Request auth enabled (X-GLIA-Secret) for /api/*");
 } else {
   logger.warn("Request auth is DISABLED — anyone with access to this URL can read/write data.");
   if (!NO_AUTH) {
-    logger.info("Tip: Set SYNQ_SECRET in backend/.env to enable authentication.");
+    logger.info("Tip: Set GLIA_SECRET in backend/.env to enable authentication.");
   }
 }
 
@@ -144,7 +144,7 @@ app.use("/api/jobs", jobsRoutes);
 // Health check — includes service status
 app.get("/health", (_req, res) => {
   res.json({
-    status: "SYNQ backend running",
+    status: "GLIA backend running",
     version: "1.4.5",
     services: {
       backend: "ok",
@@ -163,13 +163,13 @@ if (fs.existsSync(dashboardDist)) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const sirv = require("sirv");
     app.use("/", sirv(dashboardDist, { single: true, dev: false }));
-    logger.success(`[SYNQ] Dashboard served from production build → http://localhost:${PORT}`);
+    logger.success(`[GLIA] Dashboard served from production build → http://localhost:${PORT}`);
   } catch {
-    logger.warn("[SYNQ] sirv not installed — run: cd backend && npm install sirv");
+    logger.warn("[GLIA] sirv not installed — run: cd backend && npm install sirv");
   }
 } else {
   logger.warn(
-    `[SYNQ] No dashboard build found at ${dashboardDist}. ` +
+    `[GLIA] No dashboard build found at ${dashboardDist}. ` +
     "Run: cd dashboard && npm run build"
   );
 }
@@ -181,13 +181,13 @@ async function start() {
     // Start background job worker for extraction tasks
     await startWorker();
   } catch (err) {
-    logger.error("Fatal: Database connection failed. SYNQ cannot start.");
+    logger.error("Fatal: Database connection failed. GLIA cannot start.");
     logger.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 
   app.listen(PORT, () => {
-    logger.success(`SYNQ backend running on port ${PORT}`);
+    logger.success(`GLIA backend running on port ${PORT}`);
   });
 }
 
