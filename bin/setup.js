@@ -27,17 +27,18 @@ function ask(question, defaultVal) {
 }
 
 async function run() {
-  const targetDir = await ask('Where should we install Glia?', 'glia');
-  const fullPath = path.resolve(process.cwd(), targetDir);
+  const parentDir = await ask('Where should we install Glia? (press Enter for current folder)', '.');
+  const targetDirName = 'Glia-AI';
+  const fullPath = path.resolve(process.cwd(), parentDir, targetDirName);
 
   if (fs.existsSync(fullPath)) {
-    console.log(`\n [!] Folder "${targetDir}" already exists. Please choose a new name or delete it.`);
+    console.log(`\n [!] Folder "${fullPath}" already exists. Please delete it or choose a different location.`);
     process.exit(1);
   }
 
   console.log(`\n [*] Cloning Glia into ${fullPath}...`);
 
-  const clone = spawn('git', ['clone', REPO_URL, targetDir], { stdio: 'inherit' });
+  const clone = spawn('git', ['clone', REPO_URL, fullPath], { stdio: 'inherit' });
 
   clone.on('close', (code) => {
     if (code !== 0) {

@@ -167,18 +167,10 @@ echo.
 echo  -----------------------------------
 echo   FINAL STEP: LOAD THE EXTENSION
 echo  -----------------------------------
-echo   1. I will now open the 'extension' folder.
-echo   2. I will also open the Chrome Extensions page.
-echo   3. Drag and drop the folder into the browser.
-echo.
-pause
-
-REM Open File Explorer to the extension folder
-explorer.exe "%~dp0extension"
-
-REM Open Chrome/Edge Extensions page
-start chrome://extensions 2>nul || start msedge://extensions 2>nul || start https://chrome.google.com/webstore/category/extensions
-
+echo   1. Open Chrome --^> chrome://extensions
+echo   2. Enable Developer mode (top-right toggle)
+echo   3. Load unpacked --^> select Glia-AI/extension/dist
+echo   4. The GLIA badge appears on Claude, ChatGPT, Gemini, and DeepSeek
 echo.
 echo   All set! Your AI now has a memory.
 echo.

@@ -241,21 +241,10 @@ echo ""
 echo " -----------------------------------"
 echo "  FINAL STEP: LOAD THE EXTENSION"
 echo " -----------------------------------"
-echo "  1. I will now open the 'extension' folder."
-echo "  2. I will also open the Chrome Extensions page."
-echo "  3. Drag and drop the folder into the browser."
-echo ""
-read -p " Press Enter to continue..."
-
-# Open folder in Finder (macOS) or XDGO-Open (Linux)
-if [[ "$OS_TYPE" == "Darwin" ]]; then
-    open "extension"
-    open "chrome://extensions" 2>/dev/null || open -a "Google Chrome" "chrome://extensions" 2>/dev/null || open "https://chrome.google.com/webstore/category/extensions"
-else
-    xdg-open "extension" 2>/dev/null
-    xdg-open "chrome://extensions" 2>/dev/null || google-chrome "chrome://extensions" 2>/dev/null || xdg-open "https://chrome.google.com/webstore/category/extensions"
-fi
-
+echo "  1. Open Chrome -> chrome://extensions"
+echo "  2. Enable Developer mode (top-right toggle)"
+echo "  3. Load unpacked -> select Glia-AI/extension/dist"
+echo "  4. The GLIA badge appears on Claude, ChatGPT, Gemini, and DeepSeek"
 echo ""
 echo "  All set! Your AI now has a memory."
 echo ""
