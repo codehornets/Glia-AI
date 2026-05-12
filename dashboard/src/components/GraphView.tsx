@@ -173,9 +173,10 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
         )
         .force("charge", d3.forceManyBody().strength(nodes.length > 500 ? -400 : -800))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("x", d3.forceX(width / 2).strength(0.06))
-        .force("y", d3.forceY(height / 2).strength(0.06))
-        .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (nodes.length > 500 ? 10 : 40)))
+        .force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015))
+        .force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
+        .force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
+        .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (nodes.length > 500 ? 10 : 35)))
         .force("wander", wanderForce)
         .alphaDecay(0.02)
         .alphaMin(0.001)     // Never fully freeze
@@ -188,6 +189,9 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
 
       simulationRef.current.nodes(processedData.nodes);
       (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(processedData.links);
+      simulationRef.current.force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015));
+      simulationRef.current.force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
+      simulationRef.current.force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
       simulationRef.current.force("wander", wanderForce);
       
       if (hasChanged) {
