@@ -2,7 +2,7 @@
 
 import { Router, Request, Response } from "express";
 import { vectorStore, graphStore, RetrievedChunk } from "../services/storage";
-import { extractEntitiesFromQuery, extractRelevantSnippets } from "../services/extractor";
+import { extractEntitiesFromQuery } from "../services/extractor";
 import { logger } from "../utils/logger";
 import { wrapInContextBlock, sanitizeChunks } from "../middleware/sanitize";
 import { isValidObjectId } from "../utils/validators";
@@ -66,13 +66,8 @@ router.post("/retrieve", async (req: Request, res: Response) => {
     // Sanitise (redact injection patterns) then wrap in XML delimiters
     const sanitized = sanitizeChunks(safeChunks);
 
-    // v1.4.6: Snippet Extraction
-    const rawContent = sanitized.map(c => c.content);
-    const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
-
-    let contextBlock = snippetContext
-      ? `<glia_extracted_snippets>\n${snippetContext}\n</glia_extracted_snippets>`
-      : wrapInContextBlock(sanitized);
+    // v1.4.4 style: inject raw chunks directly (no LLM extraction step)
+    let contextBlock = wrapInContextBlock(sanitized);
     if (relatedTriples.length > 0) {
       const graphText = relatedTriples.map(t => `- ${t.subject} ${t.relation} ${t.object}`).join("\n");
       contextBlock = `<glia_graph_knowledge>\n${graphText}\n</glia_graph_knowledge>\n\n${contextBlock}`;
@@ -127,16 +122,9 @@ router.post("/global", async (req: Request, res: Response) => {
       currentChars += chunk.content.length;
     }
 
-    // Sanitise and wrap
+    // Sanitise and wrap (v1.4.4 style — direct injection, no LLM extraction)
     const sanitized = sanitizeChunks(safeChunks);
-
-    // v1.4.6: Snippet Extraction
-    const rawContent = sanitized.map(c => c.content);
-    const snippetContext = await extractRelevantSnippets(String(prompt), rawContent);
-
-    const contextBlock = snippetContext
-      ? `<glia_extracted_snippets>\n${snippetContext}\n</glia_extracted_snippets>`
-      : wrapInContextBlock(sanitized);
+    const contextBlock = wrapInContextBlock(sanitized);
 
     logger.success(`RAG Global: Budget filled (${currentChars}/${MAX_TOTAL_CHARS} chars). ${sanitized.length} chunks used.`);
 

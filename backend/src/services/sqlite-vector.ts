@@ -4,7 +4,13 @@ import { WindowChunk } from "./chunker";
 import { generateEmbedding, generateEmbeddings } from "./embeddings";
 import { logger } from "../utils/logger";
 
-const SIMILARITY_THRESHOLD = 0.55;
+// sqlite-vec returns raw L2 Euclidean distance (range ~10–30 for 768-dim nomic-embed-text).
+// Convert to 0–1 similarity with exponential decay: exp(-d/20)
+// distance=12 → 0.55, distance=17 → 0.43, distance=24 → 0.30
+const l2ToScore = (distance: number) => Math.exp(-distance / 20);
+
+const SESSION_THRESHOLD = 0.45;  // ~distance ≤ 16 — filters clearly unrelated content
+const GLOBAL_THRESHOLD  = 0.40;  // ~distance ≤ 18 — stricter for cross-session to avoid noise
 
 export class SqliteVectorStore implements IVectorStore {
   private db = getSqlite();
@@ -37,7 +43,10 @@ export class SqliteVectorStore implements IVectorStore {
     const queryEmbedding = await generateEmbedding(query);
     const vector = Buffer.from(new Float32Array(queryEmbedding).buffer);
 
-    // v1.4.6: Full query with Session ID filtering and Time-based Decay
+    // sqlite-vec evaluates `k` BEFORE the JOIN/WHERE filters, so we must
+    // fetch a large global pool first, then let the sessionId filter narrow it.
+    // Using topN * 2 (=6) caused misses as the DB grew with multiple sessions.
+    const K_POOL = 400;
     const rows = this.db.prepare(`
       SELECT 
         m.content,
@@ -51,11 +60,11 @@ export class SqliteVectorStore implements IVectorStore {
       WHERE v.embedding MATCH ? 
         AND m.sessionId = ?
         AND k = ?
-    `).all(vector, sessionId, topN * 2) as any[];
+    `).all(vector, sessionId, K_POOL) as any[];
 
     return rows
       .map(row => {
-        const semanticScore = 1.0 - row.distance;
+        const semanticScore = l2ToScore(row.distance);
         const lastUpdate = new Date(row.updatedAt || row.createdAt || new Date()).getTime();
         const daysOld = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
         const decayFactor = 1.0 - Math.min(0.3, (daysOld / 180) * 0.3);
@@ -66,15 +75,16 @@ export class SqliteVectorStore implements IVectorStore {
           score: semanticScore * decayFactor
         };
       })
-      .filter(r => r.score >= SIMILARITY_THRESHOLD)
+      .filter(r => r.score >= SESSION_THRESHOLD)
       .sort((a, b) => b.score - a.score)
       .slice(0, topN);
   }
 
   async retrieveGlobalChunks(query: string, topN = 3): Promise<RetrievedChunk[]> {
     const queryEmbedding = await generateEmbedding(query);
-    const vector = new Float32Array(queryEmbedding);
+    const vector = Buffer.from(new Float32Array(queryEmbedding).buffer);
 
+    const K_POOL = 200; // Smaller pool for global (no session filter needed)
     const rows = this.db.prepare(`
       SELECT 
         m.content,
@@ -87,11 +97,11 @@ export class SqliteVectorStore implements IVectorStore {
       JOIN sessions s ON m.sessionId = s.id
       WHERE v.embedding MATCH ? 
         AND k = ?
-    `).all(vector, topN * 2) as any[];
+    `).all(vector, K_POOL) as any[];
 
     return rows
       .map(row => {
-        const semanticScore = 1.0 - row.distance;
+        const semanticScore = l2ToScore(row.distance);
         const lastUpdate = new Date(row.updatedAt || row.createdAt || new Date()).getTime();
         const daysOld = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
         const decayFactor = 1.0 - Math.min(0.3, (daysOld / 180) * 0.3);
@@ -102,7 +112,7 @@ export class SqliteVectorStore implements IVectorStore {
           score: semanticScore * decayFactor
         };
       })
-      .filter(r => r.score >= (SIMILARITY_THRESHOLD + 0.05))
+      .filter(r => r.score >= GLOBAL_THRESHOLD)
       .sort((a, b) => b.score - a.score)
       .slice(0, topN);
   }

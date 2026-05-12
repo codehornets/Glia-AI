@@ -357,9 +357,18 @@ async function processPromptWithRAG(promptText: string, input: HTMLElement) {
         showToast("No matching context — sending normally");
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("[GLIA] RAG error:", err);
-    await injectAndSend(input, promptText);
+    const isInvalidated = err?.message?.includes("Extension context invalidated") ||
+      err?.message?.includes("context invalidated");
+    if (isInvalidated) {
+      showToast("GLIA disconnected — refresh page to reconnect");
+      // Don't try to injectAndSend — the extension context is gone,
+      // the page will send the prompt on its own when the user retries.
+    } else {
+      showToast("GLIA error — sending normally");
+      await injectAndSend(input, promptText);
+    }
   } finally {
     isProcessingPrompt = false;
   }
