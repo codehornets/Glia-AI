@@ -59,5 +59,10 @@ export function sanitizeChunks(chunks: Chunk[]): Chunk[] {
 export function wrapInContextBlock(chunks: Chunk[]): string {
   if (chunks.length === 0) return "";
 
-  return chunks.map(c => c.content).join("\n\n");
+  const header = "=== GLIA RETRIEVED CONTEXT ===\n";
+  const body = chunks
+    .map((c, i) => `[${i + 1}] (Relevance: ${Math.round(c.score * 100)}%)\n${c.content}`)
+    .join("\n\n");
+    
+  return header + body;
 }

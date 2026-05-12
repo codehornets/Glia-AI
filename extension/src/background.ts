@@ -193,7 +193,7 @@ async function handleCreateSession(payload: { projectName: string; platform: str
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       const errMsg = (body as any).error || `Server error ${res.status}`;
-      log.error(`Create session failed: ${errMsg}`);
+      log.info(`[GLIA bg] Session setup note: ${errMsg}`); // Use info instead of error to keep extensions dashboard clean
       return { error: errMsg };
     }
     const data = await res.json();
