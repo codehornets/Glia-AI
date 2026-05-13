@@ -333,7 +333,7 @@ const App: React.FC = () => {
           filterType={graphTypeFilter}
         />
         {activeSession?.isProcessingGraph && (
-          <div className="job-status-bar" style={{ position: "absolute", top: "24px", left: "24px", background: "var(--surface)", backdropFilter: "blur(10px)", border: "1px solid var(--primary)", display: "flex", alignItems: "center", gap: "10px", padding: "8px 16px", borderRadius: "10px" }}>
+          <div className="job-status-bar" style={{ position: "absolute", top: "88px", left: "304px", background: "var(--surface)", backdropFilter: "blur(10px)", border: "1px solid var(--primary)", display: "flex", alignItems: "center", gap: "10px", padding: "8px 16px", borderRadius: "10px" }}>
             <div className="processing-dot" style={{ width: "8px", height: "8px", background: "var(--primary)", borderRadius: "50%", boxShadow: "0 0 10px var(--primary)" }} />
             <span style={{ fontSize: "12px", fontWeight: "600" }}>
               {jobStatus.processing > 0 ? "Extracting Memories..." : "Queued..."}

@@ -147,10 +147,7 @@ async function ensureContentScript(tabId: number): Promise<boolean> {
       if (response?.activeSession) {
         currentSessionId = response.activeSession._id as string;
         
-        // Only pre-fill projectNameInput if the session matches the current URL.
-        const res = await chrome.storage.local.get("glia_url_map");
-        const urlMap = (res.glia_url_map || {}) as Record<string, string>;
-        if (urlMap[smartKey] === currentSessionId) {
+        if (response.activeSession.projectName) {
           projectNameInput.value = response.activeSession.projectName;
         }
 
@@ -175,11 +172,13 @@ async function ensureContentScript(tabId: number): Promise<boolean> {
             const lastSession = result.glia_session as SessionData;
             if (lastSession && lastSession.sessionId === mappedId) {
               showSession(lastSession);
+              if (lastSession.projectName) projectNameInput.value = lastSession.projectName;
             }
           } else if (result.glia_session) {
-            // Show last active session info at bottom, but keep input name empty for NEW chats
+            // Show last active session info at bottom
             showSession(result.glia_session as SessionData);
-            projectNameInput.value = ""; 
+            const lastSession = result.glia_session as SessionData;
+            if (lastSession.projectName) projectNameInput.value = lastSession.projectName;
           }
           resolve();
         });
@@ -403,12 +402,32 @@ unloadBtn.addEventListener("click", async () => {
       currentSessionId = null;
       chrome.storage.local.remove("glia_session");
       sessionInfo.style.display = "none";
+      projectNameInput.value = ""; // Clear input on unload
       updatePauseUI();
       setStatus("🔌 Session unloaded");
     } else {
       setStatus("❌ Failed to unload session", "error");
     }
   });
+});
+
+// Listen for broadcasted session changes (e.g. from Dashboard)
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "SESSION_CHANGED") {
+    const { sessionId, projectName } = message.payload;
+    if (sessionId) {
+      currentSessionId = sessionId;
+      if (projectName) {
+        projectNameInput.value = projectName;
+        showSession({ sessionId, projectName });
+      }
+    } else {
+      currentSessionId = null;
+      sessionInfo.style.display = "none";
+      projectNameInput.value = "";
+    }
+    updatePauseUI();
+  }
 });
 
 // ── Inject Context (one-time) ─────────────────────────────────────

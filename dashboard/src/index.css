@@ -69,25 +69,29 @@ body {
 
 /* Layout Architecture */
 .layout-container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  grid-template-rows: 64px 1fr;
+  position: relative;
   height: 100vh;
   width: 100vw;
+  background-color: var(--bg-deep);
   background-image: 
     radial-gradient(circle at 50% -20%, var(--primary-glow) 0%, transparent 50%),
     radial-gradient(circle at -10% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 40%);
+  overflow: hidden;
 }
 
 /* Sidebar - Floating Glass Effect */
 .sidebar {
-  grid-row: 1 / 3;
-  background: var(--bg-main);
-  border-right: 1px solid var(--border-dim);
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  background: var(--surface);
+  backdrop-filter: var(--surface-blur);
+  border-right: 1px solid var(--border-main);
   display: flex;
   flex-direction: column;
   z-index: 100;
-  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
 }
 
 .sidebar-header {
@@ -98,7 +102,7 @@ body {
   align-items: center;
   flex-shrink: 0;
   padding: 0 24px;
-  border-bottom: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-main);
 }
 
 .sidebar-title {
@@ -253,14 +257,28 @@ body {
 
 /* Top Header */
 .top-header {
-  background: rgba(13, 17, 23, 0.8);
+  position: absolute;
+  top: 0;
+  left: 280px; /* Offset by sidebar width */
+  right: 0;
+  height: 64px;
+  background: var(--surface);
   backdrop-filter: var(--surface-blur);
-  border-bottom: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-main);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
   z-index: 90;
+}
+
+.background-graph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
 }
 
 .header-left {
@@ -299,14 +317,6 @@ body {
 .tab-btn.active {
   background: var(--primary);
   color: white;
-}
-
-/* Main Graph Container */
-.background-graph {
-  grid-column: 2;
-  grid-row: 2;
-  position: relative;
-  overflow: hidden;
 }
 
 /* Side Content Panels (Facts / Chat) */
