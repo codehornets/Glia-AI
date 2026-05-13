@@ -1,10 +1,9 @@
 <div align="center">
 
-# GLIA
+# GLIA — The Memory Layer for AI
 
 ### Your AI forgets. GLIA makes it remember.
-
-Every time you open a new chat, your AI starts from zero. GLIA gives your AI persistent, cross-session memory.
+**Turn transient chats into a persistent, searchable knowledge base. Works locally, privately, and automatically.**
 
 <br/>
 
@@ -14,11 +13,13 @@ Every time you open a new chat, your AI starts from zero. GLIA gives your AI per
 [![Downloads](https://img.shields.io/npm/dt/glia-ai-setup?style=for-the-badge&logo=npm&labelColor=0B0E14&color=CB3837)](https://www.npmjs.com/package/glia-ai-setup)
 [![CI](https://img.shields.io/github/actions/workflow/status/Eshaan-Nair/Glia-AI/integration-tests.yml?style=for-the-badge&label=CI&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/Glia-AI/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.7-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 
 <br/>
 
-**Works with Claude · ChatGPT · Gemini · DeepSeek — and Claude Code · Cursor · Windsurf via MCP.**
+**Works with:**
+**Claude, ChatGPT, Gemini, DeepSeek**
+**— and Claude Code · Cursor · Windsurf via MCP.**
 
 https://github.com/user-attachments/assets/ab003d01-3e36-405c-a7a4-9eae417b77ca
 
@@ -35,9 +36,9 @@ npx glia-ai-setup
 
 ## The Problem
 
-You're deep into a complex project. You've had 12 conversations with Claude about your architecture, your auth flow, your database schema. Then you open a new chat — **it's all gone.**
+You're deep into a complex project. You've had dozens of conversations with Claude about your architecture, auth flow, and database schema. Then you open a new chat — **it's all gone.** You spend the next 10 minutes re-explaining context you've already covered.
 
-GLIA captures your conversations, distills them into a semantic knowledge graph, and **automatically injects the most relevant context into every new prompt**.
+GLIA stops the cycle. It captures your conversations, distills them into a semantic knowledge graph, and **automatically injects the most relevant context into every new prompt**.
 
 ---
 
@@ -52,7 +53,7 @@ GLIA captures your conversations, distills them into a semantic knowledge graph,
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Privacy and Security](#privacy-and-security)
-- [Whats New in v1.4.7](#whats-new-in-v147)
+- [Whats New in v1.5.0](#whats-new-in-v150)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -67,7 +68,7 @@ GLIA captures your conversations, distills them into a semantic knowledge graph,
 | **Auto-Connect** | Intercepts every prompt and injects relevant context automatically |
 | **100% Local** | Ollama runs embeddings and extraction on your machine — nothing leaves your network |
 | **Zero Data Loss** | Sliding window chunker preserves every word — no filtering, no minimum length |
-| **Prompt Injection Defence** | Chunks scanned for injection patterns; context wrapped in XML delimiters |
+| **Injection Defence** | Chunks scanned for injection patterns; context wrapped in professional headers |
 | **Knowledge Graph** | 22 entity types, 20+ relation types — captures technical and personal context |
 | **D3.js Dashboard** | Force-directed graph with degree-scaled nodes, hover tooltips, zoom controls |
 | **MCP Evolution** | Smart project detection + Hybrid recall in Claude Code, Cursor, Windsurf |
@@ -110,7 +111,7 @@ All launchers (`start.bat`, `start.sh`, `install.bat`, `install.sh`) auto-detect
 ```bash
 npx glia-ai-setup
 ```
-This script handles everything: cloning, dependency checks, and triggering the interactive installer.
+This script handles everything: clones the latest release (if needed), verifies dependencies, and triggers the interactive installer. This is the **strongly recommended** path for all users.
 
 **Option B: Manual Setup (Windows)** — double-click `install.bat`
 ```
@@ -122,14 +123,8 @@ detects RAM, starts Docker with the correct profile.
 Copy `backend/.env.example` to `backend/.env` and add your `GROQ_API_KEY` for faster extraction if Ollama is slow or unavailable.
 ```
 
-**macOS / Linux:**
-```bash
 # Recommended:
 npx glia-ai-setup
-
-# Or manual:
-git clone https://github.com/Eshaan-Nair/Glia-AI.git && cd Glia-AI && ./install.sh
-```
 
 ### Daily Use
 
@@ -155,14 +150,15 @@ The dashboard is a production build served by the backend — no separate window
 
 ## MCP Server
 
-> **v1.4.7** — GLIA now works in any MCP-compatible AI tool.
+> **Unified Memory Layer** — GLIA acts as a bridge between your browser conversations and your local development environment.
 
 Build the backend first:
 ```bash
 cd backend && npm run build
 ```
 
-Add to your AI tool's config:
+### Quick Integration
+Add to your AI tool's config to give it access to your entire conversation history:
 
 **Claude Desktop** (`~/.claude/claude_desktop_config.json`):
 ```json
@@ -176,7 +172,7 @@ Add to your AI tool's config:
 }
 ```
 
-**Cursor / Windsurf** (`.cursor/mcp.json` in project root):
+**Cursor / Windsurf** (`.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
@@ -185,7 +181,12 @@ Add to your AI tool's config:
 }
 ```
 
-Available tools: `recall_context` · `store_memory` · `search_memory` · `list_projects` · `get_project_summary`
+**Available Tools:**
+- `recall_context` — Semantic search across the active project.
+- `store_memory` — Manually save notes or code snippets.
+- `search_memory` — Cross-project global search.
+- `list_projects` — Manage your knowledge silos.
+- `get_project_summary` — View the knowledge graph as structured data.
 
 Full guide: [MCP_SETUP.md](MCP_SETUP.md)
 
@@ -303,17 +304,15 @@ Glia-AI/
 
 ## Privacy and Security
 
-All data lives in local Docker volumes. Nothing syncs externally.
-
-Ollama is the **primary** extraction backend — fully local. Groq is an automatic fallback only if Ollama is unavailable, with a console warning.
+**GLIA was built with a local-first philosophy. Your conversations are your own.**
 
 | Control | Detail |
 |:---|:---|
-| Prompt injection defence | Chunks scanned + XML context delimiters |
-| PII auto-redaction | API keys, JWTs, emails, connection strings |
-| Rate limiting | 200 req/min global · 10 req/min on `/api/chat/save` |
-| CORS | `localhost:3001`, `localhost:5173`, `chrome-extension://` only |
-| Input validation | sessionId as ObjectId, platform as enum, text length enforced |
+| **Local-First** | All data lives in local Docker volumes. Nothing syncs to a cloud service. |
+| **Local LLM** | Ollama is the primary backend. Your data stays on your silicon. |
+| **PII Redaction** | Automated scrubbing of API keys, JWTs, and emails happens client-side. |
+| **Sanitization** | RAG chunks are scanned for prompt injection patterns before injection. |
+| **CORS Locked** | Backend only accepts requests from the dashboard and extension. |
 | Security headers | helmet on every response |
 | Shared secret | Removed in v1.4.7 |
 
@@ -321,13 +320,12 @@ See [SECURITY.md](SECURITY.md) for the full threat model and vulnerability repor
 
 ---
 
-## Whats New in v1.4.7
+## Whats New in v1.5.0
 
-- **One-Command Setup** — Introduced `npx glia-ai-setup` for a frictionless, zero-cloning installation experience.
-- **Improved Extension Workflow** — The installer now automatically opens the extension folder and the Chrome extensions page.
-- **Unified UI Layout** — Consolidated the Dashboard header for a cleaner, professional look.
-- **Smart URL Mapping** — Enhanced session persistence across different AI platform URL formats.
-- **Architectural Hardening** — Improved error handling for stalled jobs and better session cleanup logic.
+- **Unified Versioning** — Full alignment across all components (Backend, Dashboard, Extension).
+- **Standardized Context Header** — Switched to a leaner, token-efficient injection header.
+- **Enhanced Documentation** — New [ROADMAP.md](ROADMAP.md) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+- **Frictionless Setup** — Improved `npx glia-ai-setup` reliability.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
