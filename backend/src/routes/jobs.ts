@@ -19,7 +19,7 @@ router.get("/status", async (_req: Request, res: Response) => {
 // Session-specific status
 router.get("/status/:sessionId", async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId as string;
     const status = await sessionStore.getJobStatusBySession(sessionId);
     res.json(status);
   } catch (err) {
