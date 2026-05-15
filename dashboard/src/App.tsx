@@ -23,6 +23,8 @@ const App: React.FC = () => {
   const [graphTypeFilter, setGraphTypeFilter] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"projects" | "legend">("projects");
   const [factsPage, setFactsPage] = useState(0);
+  const [factSearch, setFactSearch] = useState("");
+  const [minDegree, setMinDegree] = useState(0);
 
   // Hooks
   const {
@@ -69,6 +71,7 @@ const App: React.FC = () => {
       setSelectedNodeId(null);
       setGraphTypeFilter(null);
       setFactsPage(0);
+      setFactSearch("");
       setJobStatus({ pending: 0, processing: 0, deadLettered: 0 });
     }
   }, [activeSession, loadSessionData]);
@@ -142,11 +145,35 @@ const App: React.FC = () => {
     if (selectedNodeId) {
       list = list.filter(t => t.subject === selectedNodeId || t.object === selectedNodeId);
     }
+    if (factSearch) {
+      const q = factSearch.toLowerCase();
+      list = list.filter(t => 
+        t.subject.toLowerCase().includes(q) || 
+        t.object.toLowerCase().includes(q) || 
+        t.relation.toLowerCase().includes(q)
+      );
+    }
     const start = factsPage * PAGE_SIZE;
     return list.slice(start, start + PAGE_SIZE);
-  }, [triples, selectedNodeId, factsPage]);
+  }, [triples, selectedNodeId, factsPage, factSearch]);
 
-  const totalPages = Math.ceil((selectedNodeId ? triples.filter(t => t.subject === selectedNodeId || t.object === selectedNodeId).length : triples.length) / PAGE_SIZE);
+  const filteredTripleCount = useMemo(() => {
+    let list = triples;
+    if (selectedNodeId) {
+      list = list.filter(t => t.subject === selectedNodeId || t.object === selectedNodeId);
+    }
+    if (factSearch) {
+      const q = factSearch.toLowerCase();
+      list = list.filter(t => 
+        t.subject.toLowerCase().includes(q) || 
+        t.object.toLowerCase().includes(q) || 
+        t.relation.toLowerCase().includes(q)
+      );
+    }
+    return list.length;
+  }, [triples, selectedNodeId, factSearch]);
+
+  const totalPages = Math.ceil(filteredTripleCount / PAGE_SIZE);
 
   const nodeTypes = useMemo(() => [...new Set(nodes.map(n => n.type))], [nodes]);
 
@@ -190,6 +217,8 @@ const App: React.FC = () => {
           onNodeClick={setSelectedNodeId}
           selectedNodeId={selectedNodeId}
           filterType={graphTypeFilter}
+          minDegree={minDegree}
+          setMinDegree={setMinDegree}
         />
         {(activeSession?.isProcessingGraph || jobStatus.pending > 0 || jobStatus.processing > 0) && (
           <div className="job-status-bar centered-progress">
@@ -223,6 +252,8 @@ const App: React.FC = () => {
         pagedTriples={pagedTriples}
         factsPage={factsPage}
         setFactsPage={setFactsPage}
+        factSearch={factSearch}
+        setFactSearch={setFactSearch}
         totalPages={totalPages}
         chatData={chatData}
         activeSession={activeSession}

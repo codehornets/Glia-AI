@@ -15,6 +15,8 @@ interface FloatingPanelProps {
   totalPages: number;
   chatData: ChatData | null;
   activeSession: Session | null;
+  factSearch: string;
+  setFactSearch: (val: string) => void;
 }
 
 const FloatingPanel: React.FC<FloatingPanelProps> = ({
@@ -30,6 +32,8 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({
   totalPages,
   chatData,
   activeSession,
+  factSearch,
+  setFactSearch,
 }) => {
   return (
     <aside className={`floating-side-content ${isClosed ? "closed" : ""} ${isExpanded ? "expanded" : ""}`}>
@@ -70,8 +74,34 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "20px" }}>
         {activeTab === "history" && (
           <div className="history-list">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
               <h3 style={{ fontFamily: "Outfit", fontSize: "18px" }}>Captured Facts</h3>
+            </div>
+
+            <div style={{ position: "relative", marginBottom: "20px" }}>
+              <input
+                type="text"
+                placeholder="Search facts..."
+                value={factSearch}
+                onChange={(e) => {
+                  setFactSearch(e.target.value);
+                  setFactsPage(0);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: "12px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "white",
+                  fontSize: "13px",
+                  outline: "none"
+                }}
+              />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", opacity: 0.3 }}>
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
             </div>
 
             {loadingSession ? (

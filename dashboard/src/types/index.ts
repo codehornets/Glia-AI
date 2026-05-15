@@ -25,6 +25,7 @@ export interface Node extends d3.SimulationNodeDatum {
   community?: number;
   firstSeen?: string;
   degree?: number;
+  hidden?: boolean;
 }
 
 export interface Link extends d3.SimulationLinkDatum<Node> {
@@ -32,6 +33,7 @@ export interface Link extends d3.SimulationLinkDatum<Node> {
   target: string | Node;
   relation: string;
   timestamp?: string;
+  hidden?: boolean;
 }
 
 export interface ChatData {

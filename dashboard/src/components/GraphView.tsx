@@ -16,6 +16,8 @@ interface Props {
   onNodeClick?: (nodeId: string | null) => void;
   selectedNodeId?: string | null;
   filterType?: string | null;
+  minDegree: number;
+  setMinDegree: (val: number) => void;
 }
 
 const ABBREVIATIONS: Record<string, string> = {
@@ -33,8 +35,17 @@ function getAbbreviation(type: string | null | undefined): string {
   return ABBREVIATIONS[type] || type.slice(0, 4).toUpperCase();
 }
 
-export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, filterType }: Props) {
+export default function GraphView({ 
+  nodes, 
+  links, 
+  onNodeClick, 
+  selectedNodeId, 
+  filterType,
+  minDegree,
+  setMinDegree
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const transformRef = useRef(d3.zoomIdentity);
   const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
@@ -61,19 +72,30 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     return {
       nodes: nodes.map(node => {
         const pos = posMap.get(node.id);
+        const degree = degreeMap.get(node.id) || 0;
         return { 
           ...node, 
-          degree: degreeMap.get(node.id) || 0,
+          degree,
           x: pos?.x, 
           y: pos?.y, 
           vx: pos?.vx, 
-          vy: pos?.vy 
+          vy: pos?.vy,
+          hidden: degree < minDegree
         };
       }),
-      links: links.map(link => ({ ...link })),
+      links: links.map(link => {
+        const s = typeof link.source === "string" ? link.source : (link.source as any).id;
+        const t = typeof link.target === "string" ? link.target : (link.target as any).id;
+        const sDegree = degreeMap.get(s) || 0;
+        const tDegree = degreeMap.get(t) || 0;
+        return { 
+          ...link,
+          hidden: sDegree < minDegree || tDegree < minDegree
+        };
+      }),
       degreeMap
     };
-  }, [nodes, links]);
+  }, [nodes, links, minDegree]);
 
   const getNodeRadius = useCallback((degree: number) => {
     const base = 8;
@@ -98,9 +120,12 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
       });
     };
 
+    const visibleNodes = processedData.nodes.filter(n => !n.hidden);
+    const visibleLinks = processedData.links.filter(l => !l.hidden);
+
     if (!simulationRef.current) {
-      simulationRef.current = d3.forceSimulation<Node>(processedData.nodes)
-        .force("link", d3.forceLink<Node, Link>(processedData.links)
+      simulationRef.current = d3.forceSimulation<Node>(visibleNodes)
+        .force("link", d3.forceLink<Node, Link>(visibleLinks)
           .id(d => d.id)
           .distance(link => {
             const baseDist = 200;
@@ -110,12 +135,12 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
           })
           .strength(0.4)
         )
-        .force("charge", d3.forceManyBody().strength(nodes.length > 500 ? -400 : -800))
+        .force("charge", d3.forceManyBody().strength(visibleNodes.length > 500 ? -400 : -800))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015))
         .force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
         .force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
-        .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (nodes.length > 500 ? 10 : 35)))
+        .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (visibleNodes.length > 500 ? 10 : 35)))
         .force("wander", wanderForce)
         .alphaDecay(0.05)
         .alphaMin(0.001)
@@ -123,11 +148,11 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
         .velocityDecay(0.45);
     } else {
       const prevNodes = simulationRef.current.nodes();
-      const hasChanged = prevNodes.length !== processedData.nodes.length || 
-                         (simulationRef.current.force("link") as any).links().length !== processedData.links.length;
+      const hasChanged = prevNodes.length !== visibleNodes.length || 
+                         (simulationRef.current.force("link") as any).links().length !== visibleLinks.length;
 
-      simulationRef.current.nodes(processedData.nodes);
-      (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(processedData.links);
+      simulationRef.current.nodes(visibleNodes);
+      (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(visibleLinks);
       simulationRef.current.force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015));
       simulationRef.current.force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
       simulationRef.current.force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
@@ -141,7 +166,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     return () => {
       simulationRef.current?.stop();
     };
-  }, [processedData, getNodeRadius, nodes.length]);
+  }, [processedData, getNodeRadius, minDegree]);
 
   // ── Drawing & Interactions ─────────────────────────────────────
   useEffect(() => {
@@ -173,6 +198,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
     if (selectedNodeId) {
       selectedNeighbors.add(selectedNodeId);
       processedData.links.forEach(link => {
+        if ((link as any).hidden) return;
         const s = typeof link.source === "string" ? link.source : (link.source as any).id;
         const t = typeof link.target === "string" ? link.target : (link.target as any).id;
         if (s === selectedNodeId) selectedNeighbors.add(t);
@@ -214,6 +240,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
 
       // Links Pass 2: Bright
       processedData.links.forEach(link => {
+        if ((link as any).hidden) return;
         const s = link.source as Node;
         const t = link.target as Node;
         if (!s.x || !s.y || !t.x || !t.y) return;
@@ -282,7 +309,7 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
       // Nodes
       ctx.shadowBlur = 0;
       processedData.nodes.forEach(node => {
-        if (!node.x || !node.y) return;
+        if (!node.x || !node.y || (node as any).hidden) return;
         const r = getNodeRadius(node.degree || 0);
         const isHovered = hoveredNodeId === node.id || neighbors.has(node.id);
         const isInSelectionFocus = !selectedNodeId || selectedNeighbors.has(node.id);
@@ -437,7 +464,33 @@ export default function GraphView({ nodes, links, onNodeClick, selectedNodeId, f
           if (!canvas || !zoomRef.current) return;
           d3.select(canvas).transition().duration(400).call(zoomRef.current.transform, d3.zoomIdentity);
         }} className="graph-btn">⟲</button>
+        <button title="Settings" onClick={() => setShowSettings(!showSettings)} className={`graph-btn ${showSettings ? "active" : ""}`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
       </div>
+
+      {showSettings && (
+        <div className="graph-settings-panel">
+          <div className="settings-title">Graph Density</div>
+          <div className="settings-row">
+            <div className="settings-label">Min Connections: {minDegree}</div>
+            <input 
+              type="range" 
+              min="0" 
+              max="5" 
+              value={minDegree} 
+              onChange={(e) => setMinDegree(parseInt(e.target.value))}
+              style={{ accentColor: "var(--primary)" }}
+            />
+          </div>
+          <div style={{ fontSize: "10px", color: "var(--text-secondary)", marginTop: "4px" }}>
+            Hiding nodes with fewer than {minDegree} connections.
+          </div>
+        </div>
+      )}
 
       {hoveredNode && (
         <div className="graph-tooltip" style={{ border: `1px solid ${TYPE_COLORS[hoveredNode.type]}`, boxShadow: `0 4px 20px ${TYPE_COLORS[hoveredNode.type]}33` }}>
