@@ -141,6 +141,7 @@ pushd extension && call npm install --loglevel error && popd
 REM 7. Build
 echo.
 echo  Building components...
+pushd backend && call npm run build && popd
 pushd dashboard && call npm run build && popd
 pushd extension
 call npx esbuild src/content.ts    --bundle --outfile=dist/content.js    --format=iife --target=es2020 --log-level=error
@@ -148,7 +149,18 @@ call npx esbuild src/background.ts --bundle --outfile=dist/background.js --forma
 call npx esbuild popup/popup.ts    --bundle --outfile=popup/popup.js     --format=iife --target=es2020 --log-level=error
 popd
 
-REM 8. Start DBs (only if using Docker)
+REM 8. MCP Auto-Setup
+echo.
+echo  -----------------------------------
+echo   MCP Server Setup
+echo  -----------------------------------
+echo   Glia can act as a memory layer for Claude Desktop, Cursor, and Windsurf.
+set /p MCP_CHOICE="Would you like to automatically configure Claude Desktop? [y/n] (default n): "
+if /i "!MCP_CHOICE!"=="y" (
+  pushd backend && call npm run mcp:setup && popd
+)
+
+REM 9. Start DBs (only if using Docker)
 if "!USE_SQLITE!"=="0" (
   set "PROFILE=full"
   if !RAM_GB! LSS 8 set "PROFILE=lite"
