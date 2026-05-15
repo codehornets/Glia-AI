@@ -1,19 +1,19 @@
 /**
- * integration-test.ts — Full MCP System Test
- * 
- * Exercises all MCP tools from start to end to verify 
+ * mcp.integration.test.ts — Full MCP System Integration Test
+ *
+ * Exercises all MCP tools from start to end to verify
  * Hybrid Search, Smart Detection, and Dashboard Integration.
+ * Runs in SQLite mode (Zero-Docker) for CI compatibility.
  */
 
 import path from "path";
 import dotenv from "dotenv";
 
-// Setup environment for Zero-Docker mode
+// Setup environment for Zero-Docker mode BEFORE any imports
 process.env.GLIA_STORAGE_MODE = "sqlite";
 process.env.SQLITE_DB_PATH = path.resolve(__dirname, "../../glia.db");
 dotenv.config();
 
-// Imports after env setup
 import { initStorage, sessionStore } from "../../src/services/storage";
 import { identifyProject } from "../../src/mcp/tools/detector";
 import { listProjects } from "../../src/mcp/tools/projects";
@@ -22,62 +22,70 @@ import { recall } from "../../src/mcp/tools/recall";
 import { search } from "../../src/mcp/tools/search";
 import { getSummary } from "../../src/mcp/tools/summary";
 
-async function runThoroughTest() {
-  console.log("🚀 STARTING FULL MCP SYSTEM TEST\n");
+describe("MCP Tool Integration", () => {
+  let targetId: string;
 
-  // 0. Initialize
-  await initStorage();
-  console.log("✅ Storage Initialized");
+  beforeAll(async () => {
+    await initStorage();
+    const sessions = await sessionStore.getSessions();
+    if (sessions.length > 0) {
+      targetId = sessions[0]._id;
+    }
+  }, 30000);
 
-  // 1. Test Project Detection
-  console.log("\n--- [1] Project Detection ---");
-  const testPath = "C:/Code/Glia-Test-Project";
-  const detectionResult = await identifyProject(testPath);
-  console.log(`Input Path: ${testPath}`);
-  console.log(`Result: ${detectionResult}`);
+  it("should initialize storage without errors", async () => {
+    // initStorage already ran in beforeAll — if we reach here it succeeded
+    expect(true).toBe(true);
+  });
 
-  // 2. Test List Projects
-  console.log("\n--- [2] List Projects ---");
-  const projectList = await listProjects();
-  console.log(projectList);
+  it("identify_active_project: should return a result for any path", async () => {
+    const result = await identifyProject("C:/Code/Glia-Test-Project");
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  }, 10000);
 
-  // Get a real session for further testing
-  const sessions = await sessionStore.getSessions();
-  if (sessions.length === 0) {
-    console.log("❌ No sessions found. Cannot proceed with tool tests.");
-    return;
-  }
-  const targetProject = sessions[0];
-  const targetId = targetProject._id;
+  it("list_projects: should return a non-empty string", async () => {
+    const result = await listProjects();
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  }, 10000);
 
-  // 3. Test Store Memory (Dashboard Integration + Extraction)
-  console.log(`\n--- [3] Store Memory (Project: ${targetProject.projectName}) ---`);
-  const testFact = "The Glia project uses a Hybrid Search engine combining SQLite-vec and custom Graph logic.";
-  const storeResult = await store(testFact, targetId);
-  console.log(storeResult);
+  it("store_memory: should store text and confirm", async () => {
+    if (!targetId) {
+      console.warn("No sessions found — skipping store_memory test.");
+      return;
+    }
+    const result = await store(
+      "The Glia project uses a Hybrid Search engine combining SQLite-vec and custom Graph logic.",
+      targetId
+    );
+    expect(typeof result).toBe("string");
+    expect(result).not.toMatch(/error/i);
+  }, 30000);
 
-  // 4. Test Hybrid Recall (Project-specific)
-  console.log("\n--- [4] Hybrid Recall (Should find 'Hybrid Search') ---");
-  const recallResult = await recall("How does search work?", targetId);
-  console.log(recallResult);
+  it("recall_context: should return context or a not-found message", async () => {
+    if (!targetId) {
+      console.warn("No sessions found — skipping recall_context test.");
+      return;
+    }
+    const result = await recall("How does search work?", targetId);
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  }, 15000);
 
-  // 5. Test Global Hybrid Search
-  console.log("\n--- [5] Global Hybrid Search ---");
-  const globalSearchResult = await search("Glia search engine");
-  console.log(globalSearchResult);
+  it("search_memory: should return results or a not-found message", async () => {
+    const result = await search("Glia search engine");
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  }, 15000);
 
-  // 6. Test Resource Summary
-  console.log("\n--- [6] Project Summary (Resource) ---");
-  const summaryResult = await getSummary(targetId);
-  console.log(`Summary length: ${summaryResult.length} chars`);
-  console.log("Snippet:");
-  console.log(summaryResult.slice(0, 300) + "...");
-
-  console.log("\n✨ MCP SYSTEM TEST COMPLETE");
-}
-
-runThoroughTest().catch(err => {
-  console.error("\n❌ TEST FAILED:");
-  console.error(err);
-  process.exit(1);
+  it("get_project_summary: should return a summary string", async () => {
+    if (!targetId) {
+      console.warn("No sessions found — skipping get_project_summary test.");
+      return;
+    }
+    const result = await getSummary(targetId);
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  }, 15000);
 });

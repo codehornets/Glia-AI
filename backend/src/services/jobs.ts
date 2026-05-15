@@ -98,6 +98,18 @@ export async function startWorker() {
 }
 
 /**
+ * Helper: check if a job still exists in SQLite. Returns true in non-SQLite modes.
+ */
+function jobExists(jobId: string, requireStatus?: string): boolean {
+  const sqliteDb = (vectorStore as any).db;
+  if (!sqliteDb) return true; // Not in SQLite mode — assume job exists
+  const query = requireStatus
+    ? `SELECT 1 FROM jobs WHERE id = ? AND status = '${requireStatus}'`
+    : "SELECT 1 FROM jobs WHERE id = ?";
+  return !!sqliteDb.prepare(query).get(jobId);
+}
+
+/**
  * Pick up the next PENDING job and process it.
  * Returns true if a job was found and processed (even if it failed).
  */
@@ -105,8 +117,9 @@ export async function processNextJob(): Promise<boolean> {
   const job = await sessionStore.getNextJob();
   if (!job) return false;
 
-  logger.info(`[Job Queue] Processing ${job.type} job: ${job._id} (Attempt ${job.attempts}/5)`);
-  await sessionStore.updateJob(job._id, { status: "PROCESSING", attempts: job.attempts + 1 });
+  const currentAttempts = Number(job.attempts) || 0;
+  logger.info(`[Job Queue] Processing ${job.type} job: ${job._id} (Attempt ${currentAttempts + 1}/5)`);
+  await sessionStore.updateJob(job._id, { status: "PROCESSING", attempts: currentAttempts + 1 });
 
   try {
     if (job.type === "triple_extraction") {
@@ -117,8 +130,7 @@ export async function processNextJob(): Promise<boolean> {
       await handleChatIngestion(job._id, job.payload);
     }
 
-    const stillExists = (vectorStore as any).db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(job._id);
-    if (!stillExists) {
+    if (!jobExists(job._id)) {
       logger.warn(`[Job Queue] Job ${job._id} record was removed during processing. Abandoning.`);
       return true;
     }
@@ -128,7 +140,7 @@ export async function processNextJob(): Promise<boolean> {
   } catch (err: any) {
     logger.error(`[Job Queue] Failed ${job.type} job: ${job._id} — ${err.message}`);
 
-    if (job.attempts < 5) {
+    if (currentAttempts < 5) {
       await sessionStore.updateJob(job._id, { status: "PENDING" });
     } else {
       await sessionStore.updateJob(job._id, {
@@ -137,7 +149,7 @@ export async function processNextJob(): Promise<boolean> {
         failedAt: new Date(),
         error: err.message
       });
-      logger.error(`[Job Queue] Job ${job._id} dead-lettered after ${job.attempts} attempts.`);
+      logger.error(`[Job Queue] Job ${job._id} dead-lettered after ${currentAttempts + 1} attempts.`);
     }
   }
   return true;
@@ -158,8 +170,7 @@ async function handleSentenceIndexing(jobId: string, payload: { chunks: any[] })
 
   for (const chunk of chunks) {
     // ── Kill Switch Check ──────────────────────────────────────────
-    const stillActive = sqliteStore.db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
-    if (!stillActive) {
+    if (!jobExists(jobId)) {
       logger.warn(`[Job Queue] Sentence indexing job ${jobId} cancelled. Stopping.`);
       return;
     }
@@ -195,10 +206,8 @@ async function handleTripleExtraction(jobId: any, payload: {
 
   // Ghost Job Check — kill the job if session or job record was deleted
   const session = await sessionStore.getSession(sessionId);
-  const sqliteStore = vectorStore as any;
-  const jobExists = sqliteStore.db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
 
-  if (!session || !jobExists) {
+  if (!session || !jobExists(jobId)) {
     logger.warn(`[Job Queue] Job ${jobId} or Session ${sessionId} no longer exists. Killing job.`);
     return;
   }
@@ -237,8 +246,7 @@ async function handleTripleExtraction(jobId: any, payload: {
 
   for (let i = startIndex; i < chunks.length; i++) {
     // ── Kill Switch Check ──────────────────────────────────────────
-    const stillActive = sqliteStore.db.prepare("SELECT 1 FROM jobs WHERE id = ? AND status = 'PROCESSING'").get(jobId);
-    if (!stillActive) {
+    if (!jobExists(jobId, "PROCESSING")) {
       logger.warn(`[Job Queue] Job ${jobId} cancelled or deleted. Stopping extraction.`);
       return;
     }
@@ -250,7 +258,7 @@ async function handleTripleExtraction(jobId: any, payload: {
       const triples = await extractTriplesFromText(chunks[i]);
 
       // ── Kill Switch Check 2 (After Extraction) ───────────────────
-      if (!sqliteStore.db.prepare("SELECT 1 FROM jobs WHERE id = ? AND status = 'PROCESSING'").get(jobId)) {
+      if (!jobExists(jobId, "PROCESSING")) {
         logger.warn(`[Job Queue] Job ${jobId} cancelled during extraction. Stopping.`);
         return;
       }
