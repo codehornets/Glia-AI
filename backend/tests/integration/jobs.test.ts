@@ -33,7 +33,7 @@ describe("Job Queue Service", () => {
     //    currentAttempts is read BEFORE the increment, so starting at 5 makes 5 < 5 = false
     const job = await Job.create({
       type: "triple_extraction",
-      payload: { sessionId: testSessionId, text: "fail me deliberately" },
+      payload: { sessionId: "invalid-id", text: "fail me deliberately" }, // Invalid ID causes intentional failure
       status: "PENDING",
       attempts: 5,
       deadLettered: false
