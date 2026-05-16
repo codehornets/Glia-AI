@@ -13,6 +13,7 @@
  *
  * Updated: v1.4.7
  */
+process.env.GLIA_MCP_MODE = "true";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -24,9 +25,10 @@ import {
 import dotenv from "dotenv";
 import path from "path";
 
-// Load env — try both common locations
+// Load env — try common locations relative to dist/src/mcp
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../../../backend/.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../../backend/.env") });
 
 import { recall } from "./tools/recall";
 import { store } from "./tools/store";
@@ -50,6 +52,7 @@ const TOOLS = [
         prompt: { type: "string", description: "The current task or question" },
         project: { type: "string", description: "Project ID to scope the search (optional)" },
         topN: { type: "number", description: "Max chunks to return (default 3, max 6)" },
+        debug: { type: "boolean", description: "Include engine attribution in results (default false)" },
       },
       required: ["prompt"],
     },
@@ -63,10 +66,10 @@ const TOOLS = [
     inputSchema: {
       type: "object" as const,
       properties: {
-        text: { type: "string", description: "Content to save" },
-        project: { type: "string", description: "Project ID to associate with" },
+        content: { type: "string", description: "The fact, decision, or context to remember" },
+        project: { type: "string", description: "Project ID or a NEW project name (auto-creates)" },
       },
-      required: ["text", "project"],
+      required: ["content", "project"],
     },
   },
   {
@@ -168,13 +171,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolRes
         const result = await recall(
           args.prompt as string,
           args.project as string,
-          args.topN as number | undefined
+          args.topN as number | undefined,
+          args.debug as boolean | undefined
         );
         return { content: [{ type: "text", text: result }] };
       }
       case "store_memory": {
         const result = await store(
-          args.text as string,
+          args.content as string,
           args.project as string
         );
         return { content: [{ type: "text", text: result }] };

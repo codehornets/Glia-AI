@@ -165,8 +165,8 @@ async function handleSentenceIndexing(jobId: string, payload: { chunks: any[] })
     return;
   }
 
-  const insertSentVec = sqliteStore.db.prepare("INSERT INTO vec_sentences (sentence_id, embedding) VALUES (?, ?)");
-  const insertSentMeta = sqliteStore.db.prepare("INSERT INTO sentence_metadata (sentence_id, chunk_id, content) VALUES (?, ?, ?)");
+  const insertSentVec = sqliteStore.db.prepare("INSERT OR REPLACE INTO vec_sentences (sentence_id, embedding) VALUES (?, ?)");
+  const insertSentMeta = sqliteStore.db.prepare("INSERT OR REPLACE INTO sentence_metadata (sentence_id, chunk_id, content) VALUES (?, ?, ?)");
 
   for (const chunk of chunks) {
     // ── Kill Switch Check ──────────────────────────────────────────

@@ -71,11 +71,11 @@ export class SqliteVectorStore implements IVectorStore {
     // nomic-embed-text: Use 'document' task for indexing
     const embeddings = await generateEmbeddings(contents, "document");
 
-    const insertVec = this.db.prepare("INSERT INTO vec_chunks (chunk_id, embedding) VALUES (?, ?)");
-    const insertMeta = this.db.prepare("INSERT INTO chunk_metadata (chunk_id, sessionId, chunkIndex, content) VALUES (?, ?, ?, ?)");
-    const insertFts = this.db.prepare("INSERT INTO fts_chunks (chunk_id, content) VALUES (?, ?)");
-    const insertSentVec = this.db.prepare("INSERT INTO vec_sentences (sentence_id, embedding) VALUES (?, ?)");
-    const insertSentMeta = this.db.prepare("INSERT INTO sentence_metadata (sentence_id, chunk_id, content) VALUES (?, ?, ?)");
+    const insertVec = this.db.prepare("INSERT OR REPLACE INTO vec_chunks (chunk_id, embedding) VALUES (?, ?)");
+    const insertMeta = this.db.prepare("INSERT OR REPLACE INTO chunk_metadata (chunk_id, sessionId, chunkIndex, content) VALUES (?, ?, ?, ?)");
+    const insertFts = this.db.prepare("INSERT OR REPLACE INTO fts_chunks (chunk_id, content) VALUES (?, ?)");
+    const insertSentVec = this.db.prepare("INSERT OR REPLACE INTO vec_sentences (sentence_id, embedding) VALUES (?, ?)");
+    const insertSentMeta = this.db.prepare("INSERT OR REPLACE INTO sentence_metadata (sentence_id, chunk_id, content) VALUES (?, ?, ?)");
 
     const chunkEmbeddings = await generateEmbeddings(chunks.map(c => c.content), "document");
 

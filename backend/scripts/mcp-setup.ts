@@ -10,21 +10,28 @@ async function setupMcp() {
     ? path.join(process.env.APPDATA || "", "Claude", "claude_desktop_config.json")
     : path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
 
-  const serverPath = path.resolve(__dirname, "../dist/mcp/server.js");
+  const serverPath = path.resolve(__dirname, "../dist/src/mcp/server.js");
+  logger.info(`Checking for MCP server at: ${serverPath}`);
   
   // Ensure the server is built
   if (!fs.existsSync(serverPath)) {
-    logger.warn("MCP Server not built yet. Run 'npm run build' in the backend folder first.");
+    logger.error(`MCP Server NOT FOUND at ${serverPath}`);
+    logger.warn("Please ensure 'npm run build' completed successfully in the backend folder.");
     return;
   }
 
   if (!fs.existsSync(claudeConfigPath)) {
-    logger.info(`Claude Desktop config not found at ${claudeConfigPath}. Skipping auto-setup.`);
-    return;
+    const configDir = path.dirname(claudeConfigPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(claudeConfigPath, JSON.stringify({ mcpServers: {} }, null, 2));
+    logger.info(`Created new Claude configuration at ${claudeConfigPath}`);
   }
 
   try {
-    const config = JSON.parse(fs.readFileSync(claudeConfigPath, "utf-8"));
+    const configText = fs.readFileSync(claudeConfigPath, "utf-8");
+    const config = JSON.parse(configText || '{"mcpServers": {}}');
     if (!config.mcpServers) config.mcpServers = {};
 
     config.mcpServers.glia = {
@@ -34,7 +41,7 @@ async function setupMcp() {
 
     fs.writeFileSync(claudeConfigPath, JSON.stringify(config, null, 2));
     logger.success("Claude Desktop MCP configuration updated successfully!");
-    logger.info(`Glia Memory is now active in Claude Desktop using: ${serverPath}`);
+    logger.info(`Glia Memory is now active in Claude Desktop/Code using: ${serverPath}`);
   } catch (err: any) {
     logger.error(`Failed to update Claude config: ${err.message}`);
   }

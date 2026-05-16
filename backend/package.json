@@ -13,7 +13,9 @@
     "test:coverage": "jest --config jest.config.json --coverage",
     "mcp:config": "ts-node src/mcp/config-gen.ts",
     "benchmark:audit": "ts-node scripts/rag-audit.ts",
+    "benchmark:mcp": "ts-node scripts/mcp-benchmark.ts",
     "mcp:setup": "ts-node scripts/mcp-setup.ts",
+    "mcp:audit": "ts-node scripts/mcp-audit.ts",
     "stress-test": "ts-node scripts/generate-stress-test.ts"
   },
   "keywords": [],
