@@ -122,7 +122,8 @@ jobs:
   isolation-tests:
     name: Cross-Tenant Memory Isolation Tests
     runs-on: ubuntu-latest
-    # No service dependencies — uses deterministic dummy embeddings, no Ollama needed
+    # No service dependencies — generateEmbedding is mocked at the Jest layer.
+    # This test verifies SQL sessionId scoping, not embedding quality.
 
     steps:
       - uses: actions/checkout@v4

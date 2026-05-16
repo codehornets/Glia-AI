@@ -15,6 +15,16 @@
 import path from "path";
 import dotenv from "dotenv";
 
+// Mock the embedding layer so this test has zero external dependencies.
+// Isolation is enforced by SQL sessionId scoping in the WHERE clause —
+// not by vector distance — so deterministic fixed vectors are valid here.
+jest.mock("../../src/services/embeddings", () => ({
+  generateEmbedding: jest.fn().mockResolvedValue(new Array(768).fill(0.5)),
+  generateEmbeddings: jest.fn().mockImplementation((texts: string[]) =>
+    Promise.resolve(texts.map(() => new Array(768).fill(0.5)))
+  ),
+}));
+
 // Set storage mode before any service imports
 process.env.GLIA_STORAGE_MODE = "sqlite";
 process.env.SQLITE_DB_PATH = path.resolve(__dirname, "../../glia-isolation-test.db");
