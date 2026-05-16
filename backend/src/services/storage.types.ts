@@ -89,6 +89,7 @@ export interface IGraphStore {
   getGraphData(filters: { sessionId?: string; type?: string; relation?: string; limit?: number }): Promise<{ nodes: any[]; links: any[] }>;
   findRelatedTriples(entities: string[], sessionId: string): Promise<Triple[]>;
   findRelatedTriplesGlobal(entities: string[]): Promise<Triple[]>;
+  deleteTriples(entities: string[], sessionId: string): Promise<number>;
 }
 
 export interface IVectorStore {
@@ -96,4 +97,5 @@ export interface IVectorStore {
   retrieveRelevantChunks(query: string, sessionId: string, topN?: number, keywords?: string[]): Promise<RetrievedChunk[]>;
   retrieveGlobalChunks(query: string, topN?: number, keywords?: string[]): Promise<RetrievedChunk[]>;
   deleteChunksBySession(sessionId: string): Promise<void>;
+  deleteChunksByQuery(query: string, sessionId: string): Promise<number>;
 }
