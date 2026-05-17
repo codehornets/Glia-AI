@@ -4,11 +4,13 @@ import pino from "pino";
  * v1.4.7: Structured logging with pino
  * Supports JSON output in production and pretty-printing in development.
  */
+const isMcp = process.env.GLIA_MCP_MODE === "true";
+
 const pinoLogger = pino({
   level: process.env.LOG_LEVEL || "info",
   transport: process.env.NODE_ENV !== "production"
-    ? { target: "pino-pretty", options: { colorize: true } }
-    : undefined,
+    ? { target: "pino-pretty", options: { colorize: true, destination: isMcp ? 2 : undefined } }
+    : (isMcp ? { target: "pino/file", options: { destination: 2 } } : undefined),
 });
 
 export const logger = {

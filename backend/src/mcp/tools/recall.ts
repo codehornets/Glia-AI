@@ -11,7 +11,8 @@ import { sanitizeChunks } from "../../middleware/sanitize";
 export async function recall(
   query: string,
   project: string,
-  topN: number = 3
+  topN: number = 3,
+  debug: boolean = false
 ): Promise<string> {
   try {
     const projectStr = String(project);
@@ -52,6 +53,12 @@ export async function recall(
     if (safe.length > 0) {
       response += `RELEVANT CONTEXT CHUNKS:\n`;
       response += safe.map((c, i) => `[${i + 1}] (Relevance: ${(c.score * 100).toFixed(0)}%)\n${c.content}`).join("\n\n---\n\n");
+    }
+
+    // Add debug sources if requested
+    if (debug && safe.length > 0) {
+      response += `\n\nSOURCES:\n`;
+      response += (safe as any[]).map((c, i) => `[${i + 1}] Engines: ${c.engines?.join(", ") || "Unknown"}`).join("\n");
     }
 
     return response;

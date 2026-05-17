@@ -11,8 +11,9 @@
  *   - list_projects       → list all saved project names
  *   - get_project_summary → get knowledge graph summary for a project
  *
- * Updated: v1.4.7
+ * Updated: v1.5.1
  */
+process.env.GLIA_MCP_MODE = "true";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -24,12 +25,14 @@ import {
 import dotenv from "dotenv";
 import path from "path";
 
-// Load env — try both common locations
+// Load env — try common locations relative to dist/src/mcp
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../../../backend/.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../../backend/.env") });
 
 import { recall } from "./tools/recall";
 import { store } from "./tools/store";
+import { prune } from "./tools/prune";
 import { search } from "./tools/search";
 import { listProjects } from "./tools/projects";
 import { getSummary } from "./tools/summary";
@@ -50,6 +53,7 @@ const TOOLS = [
         prompt: { type: "string", description: "The current task or question" },
         project: { type: "string", description: "Project ID to scope the search (optional)" },
         topN: { type: "number", description: "Max chunks to return (default 3, max 6)" },
+        debug: { type: "boolean", description: "Include engine attribution in results (default false)" },
       },
       required: ["prompt"],
     },
@@ -63,10 +67,24 @@ const TOOLS = [
     inputSchema: {
       type: "object" as const,
       properties: {
-        text: { type: "string", description: "Content to save" },
-        project: { type: "string", description: "Project ID to associate with" },
+        content: { type: "string", description: "The fact, decision, or context to remember" },
+        project: { type: "string", description: "Project ID or a NEW project name (auto-creates)" },
       },
-      required: ["text", "project"],
+      required: ["content", "project"],
+    },
+  },
+  {
+    name: "prune_memory",
+    description:
+      "Surgically remove facts or context chunks from a project. " +
+      "Use this to correct errors or tell Glia to 'forget' outdated info.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "What information should be removed?" },
+        project: { type: "string", description: "Project ID to prune from" },
+      },
+      required: ["prompt", "project"],
     },
   },
   {
@@ -118,7 +136,7 @@ const TOOLS = [
 
 // ── Server setup ────────────────────────────────────────────────────
 const server = new Server(
-  { name: "glia-memory", version: "1.4.7" },
+  { name: "glia-memory", version: "1.5.1" },
   { capabilities: { tools: {}, resources: {} } }
 );
 
@@ -168,13 +186,21 @@ server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolRes
         const result = await recall(
           args.prompt as string,
           args.project as string,
-          args.topN as number | undefined
+          args.topN as number | undefined,
+          args.debug as boolean | undefined
         );
         return { content: [{ type: "text", text: result }] };
       }
       case "store_memory": {
         const result = await store(
-          args.text as string,
+          args.content as string,
+          args.project as string
+        );
+        return { content: [{ type: "text", text: result }] };
+      }
+      case "prune_memory": {
+        const result = await prune(
+          args.prompt as string,
           args.project as string
         );
         return { content: [{ type: "text", text: result }] };
@@ -213,13 +239,16 @@ server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolRes
 });
 
 // ── Bootstrap: start server ─────────────────────
+import { startWorker } from "../services/jobs";
+
 async function main() {
-  const STORAGE_MODE = (process.env.GLIA_STORAGE_MODE || "docker").toLowerCase();
   await initStorage();
+  // Start the background worker so that sentence indexing jobs are processed
+  startWorker().catch(err => logger.error("Failed to start job worker:", err));
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  process.stderr.write(`[GLIA MCP] Server ready (Mode: ${STORAGE_MODE.toUpperCase()}) — listening via stdio\n`);
+  logger.info("Glia MCP Server running on stdio");
 }
 
 main().catch(err => {

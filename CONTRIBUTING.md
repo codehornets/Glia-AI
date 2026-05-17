@@ -32,7 +32,10 @@ backend/src/
   mcp/          MCP server + tools
   middleware/   sanitize.ts
   routes/       chat · context · graph · rag
-  services/     chroma · chunker · embeddings · extractor · mongo · neo4j
+  services/     chunker · embeddings · extractor · hyde · jobs
+                sqlite · sqlite-vector · sqlite-session
+                storage · storage.types
+                chroma · mongo · neo4j (Docker mode)
   utils/        logger · privacy
 
 extension/src/
@@ -86,7 +89,13 @@ npm run build  # outputs to dashboard/dist/ — served by backend on port 3001
 # Unit tests
 cd backend && npm test
 
-# Integration test (requires Ollama + ChromaDB running)
+# MCP integration test (requires Ollama running, uses SQLite mode)
+cd backend && npm test -- --testPathPattern=mcp.integration
+
+# Isolation test (no external dependencies — embeddings are mocked)
+cd backend && npm test -- --testPathPattern=isolation.integration
+
+# Full pipeline test (requires Ollama + ChromaDB running — Docker mode)
 cd backend && npm test -- --testPathPattern=pipeline.integration
 ```
 
@@ -100,7 +109,7 @@ type(scope): short description
 Examples:
 feat(extension): add Example platform support
 fix(rag): lower similarity threshold for shorter queries
-docs(readme): update quick start for v1.5.0
+docs(readme): update quick start for v1.5.1
 test(pipeline): add edge case for empty conversation
 chore(deps): bump chromadb to 0.6.4
 ```

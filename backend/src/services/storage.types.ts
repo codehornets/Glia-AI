@@ -55,7 +55,7 @@ export interface RetrievedChunk {
 
 export interface ISessionStore {
   // Session
-  createSession(projectName: string, platform: string, externalChatId?: string): Promise<Session>;
+  createSession(projectName: string, platform: string, externalChatId?: string, customId?: string): Promise<Session>;
   getSessions(): Promise<Session[]>;
   getSession(id: string): Promise<Session | null>;
   getSessionByName(projectName: string): Promise<Session | null>;
@@ -89,11 +89,14 @@ export interface IGraphStore {
   getGraphData(filters: { sessionId?: string; type?: string; relation?: string; limit?: number }): Promise<{ nodes: any[]; links: any[] }>;
   findRelatedTriples(entities: string[], sessionId: string): Promise<Triple[]>;
   findRelatedTriplesGlobal(entities: string[]): Promise<Triple[]>;
+  deleteTriples(entities: string[], sessionId: string): Promise<number>;
 }
 
 export interface IVectorStore {
   storeChunks(chunks: WindowChunk[]): Promise<void>;
   retrieveRelevantChunks(query: string, sessionId: string, topN?: number, keywords?: string[]): Promise<RetrievedChunk[]>;
   retrieveGlobalChunks(query: string, topN?: number, keywords?: string[]): Promise<RetrievedChunk[]>;
+  hybridSearch(query: string, sessionId: string, topN?: number): Promise<RetrievedChunk[]>;
   deleteChunksBySession(sessionId: string): Promise<void>;
+  deleteChunksByQuery(query: string, sessionId: string): Promise<number>;
 }
