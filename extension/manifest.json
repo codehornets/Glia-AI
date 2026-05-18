@@ -16,7 +16,8 @@
     "https://chat.deepseek.com/*",
     "https://x.com/*",
     "https://copilot.microsoft.com/*",
-    "https://chat.mistral.ai/*"
+    "https://chat.mistral.ai/*",
+    "https://m365.cloud.microsoft/*"
   ],
   "background": {
     "service_worker": "dist/background.js"
@@ -30,7 +31,8 @@
         "https://chat.deepseek.com/*",
         "https://x.com/*",
         "https://copilot.microsoft.com/*",
-        "https://chat.mistral.ai/*"
+        "https://chat.mistral.ai/*",
+        "https://m365.cloud.microsoft/*"
       ],
       "js": [
         "dist/content.js"

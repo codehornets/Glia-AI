@@ -31,7 +31,12 @@ export const PLATFORM_HOSTNAMES: Record<string, string> = {
 
 export function detectPlatform(): Platform {
   const host = window.location.hostname;
-  const match = platforms.find(p => host.includes(p.hostname));
+  const match = platforms.find(p => {
+    if (p.name === "copilot") {
+      return host.includes("copilot.microsoft.com") || host.includes("m365.cloud.microsoft");
+    }
+    return host.includes(p.hostname);
+  });
   return match?.name || "unknown";
 }
 

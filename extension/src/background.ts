@@ -39,7 +39,8 @@ const AI_URLS = [
   "*://*.deepseek.com/*",
   "*://x.com/*",
   "*://copilot.microsoft.com/*",
-  "*://chat.mistral.ai/*"
+  "*://chat.mistral.ai/*",
+  "*://m365.cloud.microsoft/*"
 ];
 
 chrome.runtime.onMessage.addListener((message: GliaMessage, _sender, sendResponse) => {
