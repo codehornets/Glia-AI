@@ -58,6 +58,8 @@ export default function GraphView({
   const transformRef = useRef(d3.zoomIdentity);
   const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<HTMLCanvasElement, unknown> | null>(null);
+  const prevNodeCountRef = useRef(0);
+  const isInitialFitRef = useRef(false);
 
   const processedData = useMemo(() => {
     const degreeMap = new Map<string, number>();
@@ -132,6 +134,10 @@ export default function GraphView({
       });
     };
 
+    // The graph area starts at x=240 (sidebar width). Center forces on graph area, not full canvas.
+    const SIDEBAR = 240;
+    const graphCenterX = SIDEBAR + (width - SIDEBAR) / 2;
+
     if (!simulationRef.current) {
       simulationRef.current = d3.forceSimulation<Node>(processedData.nodes)
         .force("link", d3.forceLink<Node, Link>(processedData.links)
@@ -145,9 +151,9 @@ export default function GraphView({
           .strength(0.4)
         )
         .force("charge", d3.forceManyBody().strength(processedData.nodes.length > 500 ? -400 : -800))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015))
-        .force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
+        .force("center", d3.forceCenter(graphCenterX, height / 2))
+        .force("radial", d3.forceRadial(0, graphCenterX, height / 2).strength(0.015))
+        .force("x", d3.forceX(graphCenterX).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
         .force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
         .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (processedData.nodes.length > 500 ? 10 : 35)))
         .force("wander", wanderForce)
@@ -162,9 +168,9 @@ export default function GraphView({
 
       simulationRef.current.nodes(processedData.nodes);
       (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(processedData.links);
-      simulationRef.current.force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015));
-      simulationRef.current.force("center", d3.forceCenter(width / 2, height / 2));
-      simulationRef.current.force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
+      simulationRef.current.force("radial", d3.forceRadial(0, graphCenterX, height / 2).strength(0.015));
+      simulationRef.current.force("center", d3.forceCenter(graphCenterX, height / 2));
+      simulationRef.current.force("x", d3.forceX(graphCenterX).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
       simulationRef.current.force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
       simulationRef.current.force("wander", wanderForce);
       
@@ -173,7 +179,23 @@ export default function GraphView({
       }
     }
 
+    // Enter initial fit mode on data change
+    const nodeCount = processedData.nodes.length;
+    if (nodeCount !== prevNodeCountRef.current && nodeCount > 0) {
+      prevNodeCountRef.current = nodeCount;
+      isInitialFitRef.current = true;
+    }
+
+    // End initial fit mode after 1.5s and sync D3 zoom state
+    const fitTimer = setTimeout(() => {
+      isInitialFitRef.current = false;
+      if (canvasRef.current && zoomRef.current) {
+        d3.select(canvasRef.current).call(zoomRef.current.transform, transformRef.current);
+      }
+    }, 1500);
+
     return () => {
+      clearTimeout(fitTimer);
       simulationRef.current?.stop();
     };
   }, [processedData, getNodeRadius, minDegree]);
@@ -221,6 +243,28 @@ export default function GraphView({
     }
 
     const draw = () => {
+      if (isInitialFitRef.current && simulationRef.current) {
+        const allNodes = simulationRef.current.nodes().filter(n => n.x != null && n.y != null);
+        if (allNodes.length > 0) {
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          allNodes.forEach(n => {
+            if (n.x! < minX) minX = n.x!;
+            if (n.x! > maxX) maxX = n.x!;
+            if (n.y! < minY) minY = n.y!;
+            if (n.y! > maxY) maxY = n.y!;
+          });
+          const padding = 60;
+          const SIDE = 240;
+          const graphW = width - SIDE;
+          const scaleX = (graphW - padding * 2) / (maxX - minX || 1);
+          const scaleY = (height - padding * 2) / (maxY - minY || 1);
+          const scale = Math.min(scaleX, scaleY, 3);
+          const tx = SIDE + graphW / 2 - scale * (minX + maxX) / 2;
+          const ty = height / 2 - scale * (minY + maxY) / 2;
+          transformRef.current = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        }
+      }
+
       ctx.save();
       ctx.clearRect(0, 0, width, height);
       ctx.translate(transformRef.current.x, transformRef.current.y);
@@ -469,11 +513,6 @@ export default function GraphView({
           if (!canvas || !zoomRef.current) return;
           d3.select(canvas).transition().duration(300).call(zoomRef.current.scaleBy, 0.67);
         }} className="graph-btn">−</button>
-        <button title="Reset zoom" onClick={() => {
-          const canvas = canvasRef.current;
-          if (!canvas || !zoomRef.current) return;
-          d3.select(canvas).transition().duration(400).call(zoomRef.current.transform, d3.zoomIdentity);
-        }} className="graph-btn">⟲</button>
         <button title="Fit to screen" onClick={() => {
           const canvas = canvasRef.current;
           if (!canvas || !zoomRef.current || !simulationRef.current) return;
@@ -489,10 +528,12 @@ export default function GraphView({
           const padding = 40;
           const w = canvas.clientWidth;
           const h = canvas.clientHeight;
-          const scaleX = (w - padding * 2) / (maxX - minX || 1);
+          const SIDE = 240;
+          const graphW = w - SIDE;
+          const scaleX = (graphW - padding * 2) / (maxX - minX || 1);
           const scaleY = (h - padding * 2) / (maxY - minY || 1);
           const scale = Math.min(scaleX, scaleY, 5);
-          const tx = w / 2 - scale * (minX + maxX) / 2;
+          const tx = SIDE + graphW / 2 - scale * (minX + maxX) / 2;
           const ty = h / 2 - scale * (minY + maxY) / 2;
           d3.select(canvas).transition().duration(500).call(
             zoomRef.current.transform,

@@ -58,7 +58,7 @@ export function SystemHealth() {
           <span className="health-title">System Health</span>
           {lastUpdated && !isCollapsed && (
             <span className="health-updated" style={{ marginLeft: "8px" }}>
-              {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
             </span>
           )}
         </div>

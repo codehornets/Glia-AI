@@ -238,10 +238,6 @@ const App: React.FC = () => {
         setIsClosed={setIsClosed}
         loadedToExtension={loadedToExtension}
         loadIntoExtension={loadIntoExtension}
-        filterType={graphTypeFilter}
-        setFilterType={setGraphTypeFilter}
-        selectedNodeId={selectedNodeId}
-        setSelectedNodeId={setSelectedNodeId}
       />
 
       <main className="background-graph" style={{ zIndex: 1 }}>
