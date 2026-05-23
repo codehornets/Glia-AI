@@ -12,7 +12,6 @@
 [![Stars](https://img.shields.io/github/stars/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=6366F1)](https://github.com/Eshaan-Nair/ARCRIFT/stargazers)
 [![Forks](https://img.shields.io/github/forks/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=06B6D4)](https://github.com/Eshaan-Nair/ARCRIFT/forks)
 [![Issues](https://img.shields.io/github/issues/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/ARCRIFT/issues)
-[![Downloads](https://img.shields.io/npm/dt/ARCRIFT-setup?style=for-the-badge&logo=npm&labelColor=0B0E14&color=CB3837)](https://www.npmjs.com/package/ARCRIFT-setup)
 [![Version](https://img.shields.io/badge/version-1.5.3-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
 
@@ -31,9 +30,21 @@ https://github.com/user-attachments/assets/49d8eb52-c266-449a-ae45-147ec755ec09
 ## One Command Setup
 
 ```bash
-npx ARCRIFT-setup
+npx arcrift-setup
 ```
 
+<details>
+<summary><b>Historical NPM Downloads (Legacy Brands)</b></summary>
+<br/>
+Due to rebranding, the total historical download count is split across our three NPM packages:
+
+| Package Name | Downloads |
+|---|---|
+| **`arcrift-setup`** (Current) | [![Downloads](https://img.shields.io/npm/dt/arcrift-setup?style=flat-square&color=CB3837)](https://www.npmjs.com/package/arcrift-setup) |
+| **`glia-ai-setup`** (Legacy) | [![Downloads](https://img.shields.io/npm/dt/glia-ai-setup?style=flat-square&color=555555)](https://www.npmjs.com/package/glia-ai-setup) |
+| **`synq-setup`** (Legacy) | [![Downloads](https://img.shields.io/npm/dt/synq-setup?style=flat-square&color=555555)](https://www.npmjs.com/package/synq-setup) |
+
+</details>
 
 ---
 
@@ -45,9 +56,29 @@ ArcRift stops the cycle. It captures your AI conversations, extracts structured 
 
 ---
 
+## Comparison with Alternatives
+
+While tools like Mem0, Zep, and Letta focus heavily on providing memory APIs for agent developers, **ArcRift is built directly for end-users and human-in-the-loop workflows.**
+
+| Feature | ArcRift | Mem0 | Zep | Letta (MemGPT) | LangGraph |
+|:---|:---|:---|:---|:---|:---|
+| **Primary Audience** | **End-users & Devs** | Agent Devs | Agent Devs | Agent Devs | Agent Devs |
+| **Cross-Platform Chat UX** | **Yes (Injects directly into ChatGPT, Claude, etc)**| Bring your own UI | Bring your own UI | Bring your own UI | Bring your own UI |
+| **Visual Knowledge Graph** | **Yes (D3 Dashboard)** | API Only | API Only | No | Optional / Custom |
+| **Context Retrieval Precision**| **Surgical Sentence Trimming (95% noise reduction)** | Full Chunk | Full Chunk | Full Chunk | Varies by implementation |
+| **Setup Complexity** | **1 command (`npx`)** | Requires DB / API | Requires DB / Docker | Docker / Python env | Code-heavy (Framework) |
+| **Storage Backend** | **SQLite (Zero config)** | PostgreSQL / Qdrant | PostgreSQL / Redis | PostgreSQL / Chroma | Any (BYO Database) |
+| **Local vs Cloud** | **100% Local (Ollama)** | Cloud-first (Local avail) | Both | Both | Both |
+| **Native IDE Integration**| **Yes (via MCP)**| API Only | API Only | API Only | API Only |
+| **MCP Support** | **Yes** | Yes | Yes | Yes | Yes |
+| **License** | MIT | Apache 2.0 | Apache 2.0 | Apache 2.0 | MIT |
+
+---
+
 ## Table of Contents
 
 - [How the Two Modes Work](#how-the-two-modes-work)
+- [Comparison with Alternatives](#comparison-with-alternatives)
 - [Key Features](#key-features)
 - [Performance Benchmarks](#performance-benchmarks)
 - [System Requirements](#system-requirements)
@@ -255,7 +286,7 @@ SQLite mode is the recommended default. The installer detects Docker automatical
 ### One-Command Setup (All Platforms)
 
 ```bash
-npx ARCRIFT-setup
+npx arcrift-setup
 ```
 
 This is the recommended starting point for all users. It clones the repo, checks dependencies, pulls Ollama models, installs packages, and builds everything. Run it once and then use `start.bat` or `start.sh` for daily use.
@@ -270,7 +301,7 @@ The extension requires the ArcRift backend to be running. It does not work stand
 
 ```bash
 # One-command (recommended)
-npx ARCRIFT-setup
+npx arcrift-setup
 
 # Or manual
 git clone https://github.com/Eshaan-Nair/ARCRIFT.git
