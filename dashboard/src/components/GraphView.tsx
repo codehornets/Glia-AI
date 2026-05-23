@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import type { Node, Link } from "../types";
 import { TYPE_COLORS } from "../constants";
-import { pruneGraphNode } from "../api/glia";
+import { pruneGraphNode } from "../api/ArcRift";
 
 interface Props {
   nodes: Node[];
@@ -17,6 +17,7 @@ interface Props {
   onNodeClick?: (nodeId: string | null) => void;
   selectedNodeId?: string | null;
   filterType?: string | null;
+  setFilterType?: (type: string | null) => void;
   minDegree: number;
   setMinDegree: (val: number) => void;
   activeSessionId?: string;
@@ -43,6 +44,7 @@ export default function GraphView({
   onNodeClick, 
   selectedNodeId, 
   filterType,
+  setFilterType,
   minDegree,
   setMinDegree,
   activeSessionId
@@ -56,6 +58,15 @@ export default function GraphView({
   const transformRef = useRef(d3.zoomIdentity);
   const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<HTMLCanvasElement, unknown> | null>(null);
+  const prevNodeCountRef = useRef(0);
+  const isInitialFitRef = useRef(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const COMMUNITY_COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEEAD", 
+    "#D4A5A5", "#9B59B6", "#3498DB", "#E67E22", "#2ECC71",
+    "#F1C40F", "#E74C3C", "#1ABC9C", "#34495E", "#8E44AD"
+  ];
 
   const processedData = useMemo(() => {
     const degreeMap = new Map<string, number>();
@@ -75,6 +86,50 @@ export default function GraphView({
       degreeMap.set(targetId, (degreeMap.get(targetId) || 0) + 1);
     });
 
+    // Label Propagation Algorithm (LPA) for communities
+    const communityMap = new Map<string, number>();
+    const nodeIds = nodes.filter(n => !prunedNodes.has(n.id)).map(n => n.id);
+    nodeIds.forEach((id, i) => communityMap.set(id, i));
+
+    const adjList = new Map<string, string[]>();
+    nodeIds.forEach(id => adjList.set(id, []));
+    links.forEach(link => {
+      const s = typeof link.source === "string" ? link.source : (link.source as any).id;
+      const t = typeof link.target === "string" ? link.target : (link.target as any).id;
+      if (adjList.has(s) && adjList.has(t)) {
+        adjList.get(s)!.push(t);
+        adjList.get(t)!.push(s);
+      }
+    });
+
+    for (let iter = 0; iter < 5; iter++) {
+      const shuffled = [...nodeIds].sort(() => Math.random() - 0.5);
+      shuffled.forEach(id => {
+        const neighbors = adjList.get(id)!;
+        if (neighbors.length === 0) return;
+        const counts = new Map<number, number>();
+        neighbors.forEach(nId => {
+          const c = communityMap.get(nId)!;
+          counts.set(c, (counts.get(c) || 0) + 1);
+        });
+        let maxCount = -1;
+        let bestC = communityMap.get(id)!;
+        counts.forEach((count, c) => {
+          if (count > maxCount || (count === maxCount && Math.random() > 0.5)) {
+            maxCount = count;
+            bestC = c;
+          }
+        });
+        communityMap.set(id, bestC);
+      });
+    }
+
+    const uniqueCommunities = Array.from(new Set(communityMap.values()));
+    const finalCommunityMap = new Map<string, number>();
+    nodeIds.forEach(id => {
+      finalCommunityMap.set(id, uniqueCommunities.indexOf(communityMap.get(id)!));
+    });
+
     return {
       nodes: nodes.filter(n => !prunedNodes.has(n.id)).map(node => {
         const pos = posMap.get(node.id);
@@ -82,6 +137,7 @@ export default function GraphView({
         return { 
           ...node, 
           degree,
+          community: finalCommunityMap.get(node.id) || 0,
           x: pos?.x, 
           y: pos?.y, 
           vx: pos?.vx, 
@@ -108,9 +164,9 @@ export default function GraphView({
   }, [nodes, links, minDegree, prunedNodes]);
 
   const getNodeRadius = useCallback((degree: number) => {
-    const base = 8;
-    const mult = 7;
-    return Math.max(base, Math.min(60, base + (degree || 0) * mult));
+    const base = 18;
+    const mult = 8;
+    return Math.max(base, Math.min(80, base + (degree || 0) * mult));
   }, []);
 
 
@@ -122,20 +178,27 @@ export default function GraphView({
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    const wanderStrength = 0.08;
+    const wanderStrength = 0.5;
     const wanderForce = () => {
       processedData.nodes.forEach((node: any) => {
-        node.vx = (node.vx || 0) + (Math.random() - 0.5) * wanderStrength;
-        node.vy = (node.vy || 0) + (Math.random() - 0.5) * wanderStrength;
+        if (node.wanderAngle === undefined) {
+          node.wanderAngle = Math.random() * Math.PI * 2;
+        }
+        // Smoothly rotate the wander angle so movement is continuous, not jerky
+        node.wanderAngle += (Math.random() - 0.5) * 0.4;
+        
+        node.vx = (node.vx || 0) + Math.cos(node.wanderAngle) * wanderStrength;
+        node.vy = (node.vy || 0) + Math.sin(node.wanderAngle) * wanderStrength;
       });
     };
 
-    const visibleNodes = processedData.nodes.filter(n => !n.hidden);
-    const visibleLinks = processedData.links.filter(l => !l.hidden);
+    // The graph area starts at x=240 (sidebar width). Center forces on graph area, not full canvas.
+    const SIDEBAR = 240;
+    const graphCenterX = SIDEBAR + (width - SIDEBAR) / 2;
 
     if (!simulationRef.current) {
-      simulationRef.current = d3.forceSimulation<Node>(visibleNodes)
-        .force("link", d3.forceLink<Node, Link>(visibleLinks)
+      simulationRef.current = d3.forceSimulation<Node>(processedData.nodes)
+        .force("link", d3.forceLink<Node, Link>(processedData.links)
           .id(d => d.id)
           .distance(link => {
             const baseDist = 200;
@@ -143,30 +206,29 @@ export default function GraphView({
             const t = link.target as Node;
             return baseDist + getNodeRadius(s.degree || 0) + getNodeRadius(t.degree || 0);
           })
-          .strength(0.4)
+          .strength(0.05)
         )
-        .force("charge", d3.forceManyBody().strength(visibleNodes.length > 500 ? -400 : -800))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015))
-        .force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
-        .force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12))
-        .force("collision", d3.forceCollide<Node>(d => getNodeRadius(d.degree || 0) + (visibleNodes.length > 500 ? 10 : 35)))
+        .force("charge", d3.forceManyBody().strength(processedData.nodes.length > 500 ? -400 : -800))
+        .force("center", d3.forceCenter(graphCenterX, height / 2))
+        .force("radial", d3.forceRadial(0, graphCenterX, height / 2).strength(0.015))
+        .force("x", d3.forceX(graphCenterX).strength(d => (d as any).degree === 0 ? 0.05 : 0.02))
+        .force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.05 : 0.02))
         .force("wander", wanderForce)
         .alphaDecay(0.05)
         .alphaMin(0.001)
         .alphaTarget(0.002)
-        .velocityDecay(0.45);
+        .velocityDecay(0.2);
     } else {
       const prevNodes = simulationRef.current.nodes();
-      const hasChanged = prevNodes.length !== visibleNodes.length || 
-                         (simulationRef.current.force("link") as any).links().length !== visibleLinks.length;
+      const hasChanged = prevNodes.length !== processedData.nodes.length || 
+                         (simulationRef.current.force("link") as any).links().length !== processedData.links.length;
 
-      simulationRef.current.nodes(visibleNodes);
-      (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(visibleLinks);
-      simulationRef.current.force("radial", d3.forceRadial(0, width / 2, height / 2).strength(0.015));
-      simulationRef.current.force("center", d3.forceCenter(width / 2, height / 2));
-      simulationRef.current.force("x", d3.forceX(width / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
-      simulationRef.current.force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.25 : 0.12));
+      simulationRef.current.nodes(processedData.nodes);
+      (simulationRef.current.force("link") as d3.ForceLink<Node, Link>).links(processedData.links);
+      simulationRef.current.force("radial", d3.forceRadial(0, graphCenterX, height / 2).strength(0.015));
+      simulationRef.current.force("center", d3.forceCenter(graphCenterX, height / 2));
+      simulationRef.current.force("x", d3.forceX(graphCenterX).strength(d => (d as any).degree === 0 ? 0.05 : 0.02));
+      simulationRef.current.force("y", d3.forceY(height / 2).strength(d => (d as any).degree === 0 ? 0.05 : 0.02));
       simulationRef.current.force("wander", wanderForce);
       
       if (hasChanged) {
@@ -174,10 +236,36 @@ export default function GraphView({
       }
     }
 
+    // Enter initial fit mode on data change
+    const nodeCount = processedData.nodes.length;
+    if (nodeCount !== prevNodeCountRef.current && nodeCount > 0) {
+      prevNodeCountRef.current = nodeCount;
+      isInitialFitRef.current = true;
+    }
+
+    // End initial fit mode after 1.5s and sync D3 zoom state
+    const fitTimer = setTimeout(() => {
+      isInitialFitRef.current = false;
+      if (canvasRef.current && zoomRef.current) {
+        d3.select(canvasRef.current).call(zoomRef.current.transform, transformRef.current);
+      }
+    }, 1500);
+
     return () => {
+      clearTimeout(fitTimer);
       simulationRef.current?.stop();
     };
   }, [processedData, getNodeRadius, minDegree]);
+
+  // ── Play/Pause Control ─────────────────────────────────────────
+  useEffect(() => {
+    if (!simulationRef.current) return;
+    if (isPaused) {
+      simulationRef.current.stop();
+    } else {
+      simulationRef.current.alphaTarget(0.002).restart();
+    }
+  }, [isPaused]);
 
   // ── Drawing & Interactions ─────────────────────────────────────
   useEffect(() => {
@@ -222,6 +310,28 @@ export default function GraphView({
     }
 
     const draw = () => {
+      if (isInitialFitRef.current && simulationRef.current) {
+        const allNodes = simulationRef.current.nodes().filter(n => n.x != null && n.y != null);
+        if (allNodes.length > 0) {
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          allNodes.forEach(n => {
+            if (n.x! < minX) minX = n.x!;
+            if (n.x! > maxX) maxX = n.x!;
+            if (n.y! < minY) minY = n.y!;
+            if (n.y! > maxY) maxY = n.y!;
+          });
+          const padding = 60;
+          const SIDE = 240;
+          const graphW = width - SIDE;
+          const scaleX = (graphW - padding * 2) / (maxX - minX || 1);
+          const scaleY = (height - padding * 2) / (maxY - minY || 1);
+          const scale = Math.min(scaleX, scaleY, 3);
+          const tx = SIDE + graphW / 2 - scale * (minX + maxX) / 2;
+          const ty = height / 2 - scale * (minY + maxY) / 2;
+          transformRef.current = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        }
+      }
+
       ctx.save();
       ctx.clearRect(0, 0, width, height);
       ctx.translate(transformRef.current.x, transformRef.current.y);
@@ -240,11 +350,20 @@ export default function GraphView({
 
         if (!isDimmed) return;
 
+        const biggerNode = (s.degree || 0) > (t.degree || 0) ? s : t;
+        const linkColor = filterType ? TYPE_COLORS[biggerNode.type] : COMMUNITY_COLORS[(biggerNode as any).community % COMMUNITY_COLORS.length];
+
+        const dmx = (s.x + t.x) / 2;
+        const dmy = (s.y + t.y) / 2;
+        const ddx = t.x - s.x;
+        const ddy = t.y - s.y;
+        const dlen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+        const doffset = Math.min(100, dlen * 0.45);
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
-        ctx.lineTo(t.x, t.y);
-        ctx.strokeStyle = TYPE_COLORS[t.type];
-        ctx.globalAlpha = 0.03;
+        ctx.quadraticCurveTo(dmx - (ddy / dlen) * doffset, dmy + (ddx / dlen) * doffset, t.x, t.y);
+        ctx.strokeStyle = linkColor;
+        ctx.globalAlpha = 0.06;
         ctx.stroke();
       });
 
@@ -264,42 +383,39 @@ export default function GraphView({
 
         if (isDimmed) return;
 
-        const importance = ((s.degree || 0) + (t.degree || 0)) / 20;
-        const alpha = isHovered ? 0.9 : isSelected ? 0.85 : isHighlighted ? 0.8 : Math.min(0.4, 0.15 + importance);
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = TYPE_COLORS[t.type];
-        ctx.lineWidth = isHovered ? 2 : isSelected ? 2 : 1.2;
+        const biggerNode = (s.degree || 0) > (t.degree || 0) ? s : t;
+        const linkColor = filterType ? TYPE_COLORS[biggerNode.type] : COMMUNITY_COLORS[(biggerNode as any).community % COMMUNITY_COLORS.length];
 
+        const importance = ((s.degree || 0) + (t.degree || 0)) / 20;
+        const alpha = isHovered ? 0.95 : isSelected ? 0.9 : isHighlighted ? 0.85 : Math.min(0.85, 0.5 + importance);
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = linkColor;
+        ctx.lineWidth = isHovered ? 2.5 : isSelected ? 2.5 : 1.8;
+
+        const mx = (s.x + t.x) / 2;
+        const my = (s.y + t.y) / 2;
+        const dx = t.x - s.x;
+        const dy = t.y - s.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const offset = Math.min(100, len * 0.45);
         ctx.beginPath();
-        if (isHovered || isSelected) {
-          const mx = (s.x + t.x) / 2;
-          const my = (s.y + t.y) / 2;
-          const dx = t.x - s.x;
-          const dy = t.y - s.y;
-          const len = Math.sqrt(dx * dx + dy * dy) || 1;
-          const offset = Math.min(30, len * 0.15);
-          ctx.moveTo(s.x, s.y);
-          ctx.quadraticCurveTo(mx - (dy / len) * offset, my + (dx / len) * offset, t.x, t.y);
-        } else {
-          ctx.moveTo(s.x, s.y);
-          ctx.lineTo(t.x, t.y);
-        }
+        ctx.moveTo(s.x, s.y);
+        ctx.quadraticCurveTo(mx - (dy / len) * offset, my + (dx / len) * offset, t.x, t.y);
         ctx.stroke();
 
-        if (isHovered || isSelected) {
-          const tAngle = Math.atan2(t.y - s.y, t.x - s.x);
-          const nr = getNodeRadius((t as any).degree || 0) + 3;
-          const ax = t.x - Math.cos(tAngle) * nr;
-          const ay = t.y - Math.sin(tAngle) * nr;
-          const arrowSize = 5;
-          ctx.beginPath();
-          ctx.moveTo(ax, ay);
-          ctx.lineTo(ax - arrowSize * Math.cos(tAngle - Math.PI / 6), ay - arrowSize * Math.sin(tAngle - Math.PI / 6));
-          ctx.lineTo(ax - arrowSize * Math.cos(tAngle + Math.PI / 6), ay - arrowSize * Math.sin(tAngle + Math.PI / 6));
-          ctx.closePath();
-          ctx.fillStyle = ctx.strokeStyle;
-          ctx.fill();
-        }
+        // Always draw arrows
+        const tAngle = Math.atan2(t.y - (my + (dx / len) * offset), t.x - (mx - (dy / len) * offset));
+        const nr = getNodeRadius((t as any).degree || 0) + 3;
+        const ax = t.x - Math.cos(tAngle) * nr;
+        const ay = t.y - Math.sin(tAngle) * nr;
+        const arrowSize = 5;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - arrowSize * Math.cos(tAngle - Math.PI / 6), ay - arrowSize * Math.sin(tAngle - Math.PI / 6));
+        ctx.lineTo(ax - arrowSize * Math.cos(tAngle + Math.PI / 6), ay - arrowSize * Math.sin(tAngle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
 
         if (isSelected) {
           ctx.globalAlpha = 1;
@@ -326,7 +442,8 @@ export default function GraphView({
         const isTypeMatch = !filterType || node.type === filterType;
         const isDimmed = (selectedNodeId && !isInSelectionFocus) || (filterType && !isTypeMatch);
         const isSelected = selectedNodeId === node.id;
-        const color = TYPE_COLORS[node.type];
+        // Use community color by default, unless filterType is active
+        const color = filterType ? TYPE_COLORS[node.type] : COMMUNITY_COLORS[(node as any).community % COMMUNITY_COLORS.length];
         const isDirectlyFocused = isHovered || isSelected;
 
         ctx.globalAlpha = isDimmed ? 0.08 : 1;
@@ -387,7 +504,7 @@ export default function GraphView({
     simulationRef.current?.on("tick", draw);
 
     const zoom = d3.zoom<HTMLCanvasElement, unknown>()
-      .scaleExtent([0.15, 5])
+      .scaleExtent([0.02, 10])
       .on("zoom", (event) => {
         transformRef.current = event.transform;
         draw();
@@ -410,15 +527,18 @@ export default function GraphView({
       canvas.style.cursor = node ? "pointer" : "default";
     };
 
-    const handleClick = (e: MouseEvent) => {
+    d3.select(canvas).on("click", (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const node = findNodeAt(e.clientX - rect.left, e.clientY - rect.top);
-      if (node && node.id === selectedNodeId) {
-        onNodeClick?.(null);
-      } else {
-        onNodeClick?.(node?.id || null);
+      if (node) {
+        if (node.id === selectedNodeId) {
+          onNodeClick?.(null); // Toggle off if clicking the SAME node
+        } else {
+          onNodeClick?.(node.id); // Select NEW node
+        }
       }
-    };
+      // Do nothing if clicking the background (keeps current selection active)
+    });
 
     const drag = d3.drag<HTMLCanvasElement, unknown>()
       .subject((event) => {
@@ -442,13 +562,12 @@ export default function GraphView({
 
     d3.select(canvas).call(drag as any);
     canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("click", handleClick);
 
     draw();
 
     return () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("click", handleClick);
+      d3.select(canvas).on("click", null);
     };
   }, [processedData, getNodeRadius, hoveredNodeId, selectedNodeId, filterType]);
 
@@ -470,17 +589,78 @@ export default function GraphView({
           if (!canvas || !zoomRef.current) return;
           d3.select(canvas).transition().duration(300).call(zoomRef.current.scaleBy, 0.67);
         }} className="graph-btn">−</button>
-        <button title="Reset zoom" onClick={() => {
+        <button title="Fit to screen" onClick={() => {
           const canvas = canvasRef.current;
-          if (!canvas || !zoomRef.current) return;
-          d3.select(canvas).transition().duration(400).call(zoomRef.current.transform, d3.zoomIdentity);
-        }} className="graph-btn">⟲</button>
+          if (!canvas || !zoomRef.current || !simulationRef.current) return;
+          const allNodes = simulationRef.current.nodes().filter(n => n.x != null && n.y != null);
+          if (allNodes.length === 0) return;
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          allNodes.forEach(n => {
+            if (n.x! < minX) minX = n.x!;
+            if (n.x! > maxX) maxX = n.x!;
+            if (n.y! < minY) minY = n.y!;
+            if (n.y! > maxY) maxY = n.y!;
+          });
+          const padding = 40;
+          const w = canvas.clientWidth;
+          const h = canvas.clientHeight;
+          const SIDE = 240;
+          const graphW = w - SIDE;
+          const scaleX = (graphW - padding * 2) / (maxX - minX || 1);
+          const scaleY = (h - padding * 2) / (maxY - minY || 1);
+          const scale = Math.min(scaleX, scaleY, 5);
+          const tx = SIDE + graphW / 2 - scale * (minX + maxX) / 2;
+          const ty = h / 2 - scale * (minY + maxY) / 2;
+          d3.select(canvas).transition().duration(500).call(
+            zoomRef.current.transform,
+            d3.zoomIdentity.translate(tx, ty).scale(scale)
+          );
+        }} className="graph-btn" style={{ fontSize: "16px", lineHeight: 1 }}>⤢</button>
         <button title="Settings" onClick={() => setShowSettings(!showSettings)} className={`graph-btn ${showSettings ? "active" : ""}`}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
         </button>
+        <button title={isPaused ? "Play" : "Pause"} onClick={() => setIsPaused(!isPaused)} className={`graph-btn ${isPaused ? "active" : ""}`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {isPaused ? (
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            ) : (
+              <>
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </>
+            )}
+          </svg>
+        </button>
+        {selectedNode && !prunedNodes.has(selectedNode.id) && (
+          <button 
+            title="Delete Node" 
+            onClick={async () => {
+              if (window.confirm(`Delete "${selectedNode.id}" and its connections?`)) {
+                setIsPruning(true);
+                try {
+                  await pruneGraphNode(selectedNode.id, activeSessionId);
+                  setPrunedNodes(prev => new Set(prev).add(selectedNode.id));
+                  onNodeClick?.(null);
+                } catch (err: any) {
+                  alert("Failed to delete node: " + (err.message || String(err)));
+                } finally {
+                  setIsPruning(false);
+                }
+              }
+            }} 
+            className="graph-btn" 
+            style={{ color: "var(--error, #ef4444)", opacity: isPruning ? 0.5 : 1, marginTop: "8px" }}
+            disabled={isPruning}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        )}
       </div>
 
       {showSettings && (
@@ -503,6 +683,28 @@ export default function GraphView({
         </div>
       )}
 
+      {/* Filter Pills Under Navbar */}
+      <div style={{ position: "absolute", top: "80px", left: "264px", display: "flex", gap: "8px", zIndex: 50 }}>
+        {filterType && (
+          <div 
+            style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--surface)", border: `1px solid ${TYPE_COLORS[filterType]}`, padding: "4px 10px", borderRadius: "12px", fontSize: "12px", cursor: "pointer", color: TYPE_COLORS[filterType], fontWeight: 600, backdropFilter: "blur(4px)" }}
+            onClick={(e) => { e.stopPropagation(); setFilterType?.(null); }}
+          >
+            {filterType}
+            <span style={{ fontSize: "14px", lineHeight: 1 }}>×</span>
+          </div>
+        )}
+        {selectedNodeId && (
+          <div 
+            style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--surface)", border: `1px solid var(--border-dim)`, padding: "4px 10px", borderRadius: "12px", fontSize: "12px", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, backdropFilter: "blur(4px)" }}
+            onClick={(e) => { e.stopPropagation(); onNodeClick?.(null); }}
+          >
+            {selectedNodeId.length > 15 ? selectedNodeId.slice(0, 15) + "..." : selectedNodeId}
+            <span style={{ fontSize: "14px", lineHeight: 1 }}>×</span>
+          </div>
+        )}
+      </div>
+
       {hoveredNode && !prunedNodes.has(hoveredNode.id) && (
         <div className="graph-tooltip" style={{ border: `1px solid ${TYPE_COLORS[hoveredNode.type]}`, boxShadow: `0 4px 20px ${TYPE_COLORS[hoveredNode.type]}33` }}>
           <div className="graph-tooltip-title">{hoveredNode.id}</div>
@@ -511,45 +713,7 @@ export default function GraphView({
         </div>
       )}
 
-      {selectedNode && !prunedNodes.has(selectedNode.id) && (
-        <div className="graph-settings-panel" style={{ bottom: "20px", top: "auto", right: "20px" }}>
-          <div className="settings-title" style={{ color: TYPE_COLORS[selectedNode.type] }}>
-            {selectedNode.id}
-          </div>
-          <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px" }}>
-            Type: {selectedNode.type}
-          </div>
-          <button 
-            onClick={async () => {
-              if (window.confirm(`Are you sure you want to prune "${selectedNode.id}"? This will permanently delete the node and its connections.`)) {
-                setIsPruning(true);
-                try {
-                  await pruneGraphNode(selectedNode.id, activeSessionId);
-                  setPrunedNodes(prev => new Set(prev).add(selectedNode.id));
-                  onNodeClick?.(null);
-                } catch (err: any) {
-                  alert("Failed to prune node: " + (err.message || String(err)));
-                } finally {
-                  setIsPruning(false);
-                }
-              }
-            }}
-            disabled={isPruning}
-            style={{ 
-              background: "var(--error-glow, rgba(239, 68, 68, 0.15))", 
-              color: "var(--error, #ef4444)", 
-              border: "1px solid var(--error, #ef4444)", 
-              padding: "6px 12px", 
-              borderRadius: "4px", 
-              cursor: isPruning ? "not-allowed" : "pointer",
-              width: "100%",
-              fontWeight: "600"
-            }}
-          >
-            {isPruning ? "Pruning..." : "Prune Node"}
-          </button>
-        </div>
-      )}
+
     </div>
   );
 }

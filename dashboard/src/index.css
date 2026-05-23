@@ -2,34 +2,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  /* Deep Space Palette */
-  --bg-deep: #05070A;
-  --bg-main: #0D1117;
-  --surface: rgba(13, 17, 23, 0.85);
-  --surface-elevated: rgba(33, 38, 45, 0.95);
+  /* Premium Sapphire & Slate Palette */
+  --bg-deep: #020617; /* Slate 950 */
+  --bg-main: #0F172A; /* Slate 900 */
+  --surface: rgba(2, 6, 23, 0.4);
+  --surface-elevated: rgba(2, 6, 23, 0.8);
   --surface-blur: blur(16px);
   
   /* Borders */
-  --border-dim: rgba(255, 255, 255, 0.05);
-  --border-main: rgba(255, 255, 255, 0.1);
-  --border-glow: rgba(79, 70, 229, 0.2);
+  --border-dim: rgba(148, 163, 184, 0.05);
+  --border-main: rgba(148, 163, 184, 0.12);
+  --border-glow: rgba(249, 115, 22, 0.2);
   
   /* Text */
-  --text-primary: #F0F6FC;
-  --text-secondary: #8B949E;
-  --text-dim: #484F58;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-dim: #475569;
   
-  /* Accents - Harmonious Cyber Tones */
-  --primary: #4F46E5; /* Indigo */
-  --primary-glow: rgba(79, 70, 229, 0.1);
-  --secondary: #06B6D4; /* Cyan */
-  --tertiary: #D946EF; /* Magenta */
+  /* Accents - Sophisticated Color */
+  --primary: #F97316; /* Vibrant Orange */
+  --primary-glow: rgba(249, 115, 22, 0.12);
+  --secondary: #10B981; /* Emerald Green for secondary elements */
+  --tertiary: #94A3B8; /* Slate 400 */
   
-  --danger: #F85149;
-  --success: #238636;
+  --danger: #EF4444;
+  --success: #10B981;
   
-  --shadow-lg: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
-  --shadow-neon: 0 0 15px rgba(79, 70, 229, 0.1);
+  --shadow-lg: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+  --shadow-neon: 0 0 15px rgba(56, 189, 248, 0.15);
 }
 
 * {
@@ -41,11 +41,13 @@
 body {
   background-color: var(--bg-deep);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.03em;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom Scrollbar - Minimal & Modern */
@@ -74,9 +76,23 @@ body {
   width: 100vw;
   background-color: var(--bg-deep);
   background-image: 
-    radial-gradient(circle at 50% -20%, var(--primary-glow) 0%, transparent 50%),
-    radial-gradient(circle at -10% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 40%);
+    radial-gradient(circle at calc(50% + 120px) -20%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at -10% 50%, rgba(129, 140, 248, 0.04) 0%, transparent 40%);
   overflow: hidden;
+}
+
+.layout-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-mask-image: linear-gradient(to bottom, black 10%, transparent 80%);
+  mask-image: linear-gradient(to bottom, black 10%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Sidebar - Floating Glass Effect */
@@ -85,7 +101,7 @@ body {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 280px;
+  width: 240px;
   background: var(--surface);
   backdrop-filter: var(--surface-blur);
   border-right: 1px solid var(--border-main);
@@ -119,7 +135,7 @@ body {
 .sidebar-subtitle {
   font-size: 10px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-top: -2px;
@@ -266,7 +282,7 @@ body {
 .top-header {
   position: absolute;
   top: 0;
-  left: 280px; /* Offset by sidebar width */
+  left: 240px; /* Offset by sidebar width */
   right: 0;
   height: 64px;
   background: var(--surface);
@@ -460,7 +476,7 @@ body {
 .graph-controls {
   position: absolute;
   bottom: 24px;
-  left: 304px;
+  left: 264px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -493,7 +509,7 @@ body {
 .graph-settings-panel {
   position: absolute;
   bottom: 24px;
-  left: 340px;
+  left: 300px;
   background: var(--surface);
   backdrop-filter: var(--surface-blur);
   border: 1px solid var(--border-main);

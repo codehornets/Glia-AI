@@ -1,6 +1,6 @@
 # Platform Selectors
 
-GLIA uses CSS selectors to find AI responses and the chat input on each supported platform. These selectors can go stale when a platform updates its DOM.
+ArcRift uses CSS selectors to find AI responses and the chat input on each supported platform. These selectors can go stale when a platform updates its DOM.
 
 > **If Save Chat returns 0 messages, or context injection does nothing — check this file first.**
 
@@ -8,9 +8,9 @@ A weekly CI job ([`.github/workflows/selector-check.yml`](.github/workflows/sele
 
 ---
 
-## How the Selector System Works (v1.5.2)
+## How the Selector System Works (v1.5.3)
 
-As of v1.5.2, **input box selectors** use a multi-strategy resolver defined centrally in `extension/src/platform/resolver.ts`.
+As of v1.5.3, **input box selectors** use a multi-strategy resolver defined centrally in `extension/src/platform/resolver.ts`.
 
 Each platform has an ordered array of strategies. The resolver tries each in sequence and returns the first match:
 
@@ -197,7 +197,7 @@ A `watchForInput()` function uses a MutationObserver — if the input is not yet
 
 ## Diagnosing Broken Selectors
 
-If GLIA captures 0 messages or injection does nothing:
+If ArcRift captures 0 messages or injection does nothing:
 
 1. Open **Chrome DevTools** (F12) on the affected platform
 2. Go to **Console** and run:
