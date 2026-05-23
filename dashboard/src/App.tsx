@@ -279,7 +279,7 @@ const App: React.FC = () => {
             <GlobalSearchView />
           </div>
         )}
-        {(activeSession?.isProcessingGraph || jobStatus.pending > 0 || jobStatus.processing > 0) && (
+        {activeMainTab === "graph" && (activeSession?.isProcessingGraph || jobStatus.pending > 0 || jobStatus.processing > 0) && (
           <div className="job-status-bar centered-progress">
             <div className="status-header">
               <div className="processing-dot" />
@@ -288,7 +288,7 @@ const App: React.FC = () => {
               </span>
             </div>
             <div className="status-meta">
-              {(Number(jobStatus?.pending) || 0) + (Number(jobStatus?.processing) || 0)} chunks remaining
+              {(Number(jobStatus?.pending) || 0) + (Number(jobStatus?.processing) || 0)} background tasks active
             </div>
             {jobStatus.deadLettered > 0 && (
               <div className="status-error">

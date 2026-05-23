@@ -744,7 +744,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .centered-progress {
   position: absolute;
   top: 50%;
-  left: 50%;
+  left: calc(50% + 120px);
   transform: translate(-50%, -50%);
   z-index: 1000;
   min-width: 240px;

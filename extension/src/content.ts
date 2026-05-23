@@ -634,7 +634,7 @@ function updateBadge(active: boolean) {
     label.textContent = "ArcRift ON";
     badge.classList.add("active");
   } else {
-    label.textContent = "arcrift";
+    label.textContent = "ArcRift";
   }
 }
 
