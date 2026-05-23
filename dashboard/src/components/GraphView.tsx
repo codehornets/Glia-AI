@@ -353,9 +353,15 @@ export default function GraphView({
         const biggerNode = (s.degree || 0) > (t.degree || 0) ? s : t;
         const linkColor = filterType ? TYPE_COLORS[biggerNode.type] : COMMUNITY_COLORS[(biggerNode as any).community % COMMUNITY_COLORS.length];
 
+        const dmx = (s.x + t.x) / 2;
+        const dmy = (s.y + t.y) / 2;
+        const ddx = t.x - s.x;
+        const ddy = t.y - s.y;
+        const dlen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+        const doffset = Math.min(100, dlen * 0.45);
         ctx.beginPath();
         ctx.moveTo(s.x, s.y);
-        ctx.lineTo(t.x, t.y);
+        ctx.quadraticCurveTo(dmx - (ddy / dlen) * doffset, dmy + (ddx / dlen) * doffset, t.x, t.y);
         ctx.strokeStyle = linkColor;
         ctx.globalAlpha = 0.06;
         ctx.stroke();
@@ -386,13 +392,13 @@ export default function GraphView({
         ctx.strokeStyle = linkColor;
         ctx.lineWidth = isHovered ? 2.5 : isSelected ? 2.5 : 1.8;
 
-        ctx.beginPath();
         const mx = (s.x + t.x) / 2;
         const my = (s.y + t.y) / 2;
         const dx = t.x - s.x;
         const dy = t.y - s.y;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const offset = Math.min(30, len * 0.15);
+        const offset = Math.min(100, len * 0.45);
+        ctx.beginPath();
         ctx.moveTo(s.x, s.y);
         ctx.quadraticCurveTo(mx - (dy / len) * offset, my + (dx / len) * offset, t.x, t.y);
         ctx.stroke();

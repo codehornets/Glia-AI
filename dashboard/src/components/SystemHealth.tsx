@@ -102,11 +102,11 @@ export function SystemHealth() {
                   {health.jobQueue.processing > 0 && (
                     <span className="queue-pill processing">{health.jobQueue.processing} active</span>
                   )}
-                  {health.jobQueue.failed > 0 && (
-                    <span className="queue-pill failed">{health.jobQueue.failed} failed</span>
+                  {health.jobQueue.deadLettered > 0 && (
+                    <span className="queue-pill failed">{health.jobQueue.deadLettered} failed</span>
                   )}
-                  {health.jobQueue.pending === 0 && health.jobQueue.processing === 0 && health.jobQueue.failed === 0 && (
-                    <span className="queue-pill idle">Idle</span>
+                  {health.jobQueue.pending === 0 && health.jobQueue.processing === 0 && health.jobQueue.deadLettered === 0 && (
+                    <span className="queue-pill idle">-</span>
                   )}
                 </span>
               </div>
@@ -121,7 +121,7 @@ export function SystemHealth() {
                 <span className="health-label">Ollama</span>
                 <span className="health-ollama">
                   <span className={`health-indicator ${health.ollama.reachable ? "green" : "red"}`} />
-                  {health.ollama.reachable ? `Connected (${health.ollama.model})` : "Unreachable"}
+                  {health.ollama.reachable ? health.ollama.model : "Offline"}
                 </span>
               </div>
             </div>
