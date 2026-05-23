@@ -8,7 +8,7 @@ Thanks for your interest in contributing. Bug fixes, new platform support, UI im
 
 ### One Command Setup for Users
 ```bash
-npx ARCRIFT-setup
+npx arcrift-setup
 ```
 
 ### For Contributors

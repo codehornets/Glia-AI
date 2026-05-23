@@ -31,7 +31,7 @@ jobs:
 
             ### One-Command Setup (Recommended)
             ```bash
-            npx ARCRIFT-setup
+            npx arcrift-setup
             ```
             ```bash
             # Regular Start

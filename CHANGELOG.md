@@ -92,7 +92,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ### Documentation Overhaul
 - **Standardized Context Format** — Updated all documentation to reflect the move from XML delimiters to the Lean Text Header (`=== ArcRift RETRIEVED CONTEXT ===`).
-- **Npx-First Installation** — Refactored all "Getting Started" guides to prioritize `npx ARCRIFT-setup` over manual cloning.
+- **Npx-First Installation** — Refactored all "Getting Started" guides to prioritize `npx arcrift-setup` over manual cloning.
 - **New ROADMAP.md** — Introduced a formal project roadmap for future milestones.
 - **New TROUBLESHOOTING.md** — Created a comprehensive guide for common installation and runtime issues.
 - **Architecture Sync** — Updated `ARCHITECTURE.md` and `RAG_PIPELINE.md` with accurate diagrams and thresholding logic.
@@ -127,7 +127,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ### Rebranding & Identity
 - **Project Rebrand** — Transitioned the project identity from **Synq** to **ARCRIFT**.
-- **CLI Refresh** — Updated the one-command installer to `npx ARCRIFT-setup`.
+- **CLI Refresh** — Updated the one-command installer to `npx arcrift-setup`.
 - **Infrastructure Update** — Renamed all environment variables (`ARCRIFT_SECRET`, `ARCRIFT_STORAGE_MODE`), Docker containers, and internal storage keys.
 - **Documentation Audit** — Comprehensive update of all guides, architecture diagrams, and repository metadata.
 - **Extension Stability** — Fixed a crash in the popup when opened on restricted browser pages (`chrome://`, `edge://`).

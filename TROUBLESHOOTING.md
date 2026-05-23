@@ -4,7 +4,7 @@ If you're running into issues with ArcRift, check the common solutions below.
 
 ## Installation Issues
 
-### `npx ARCRIFT-setup` fails
+### `npx arcrift-setup` fails
 - **Permissions:** Try running as Administrator (Windows) or using `sudo` (macOS/Linux).
 - **Node.js Version:** Ensure you are on Node.js 20 LTS or higher. Check with `node -v`.
 - **Git:** Make sure Git is installed and available in your PATH.
