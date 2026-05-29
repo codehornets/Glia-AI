@@ -93,6 +93,8 @@ export interface IGraphStore {
   findRelatedTriples(entities: string[], sessionId: string): Promise<Triple[]>;
   findRelatedTriplesGlobal(entities: string[]): Promise<Triple[]>;
   deleteTriples(entities: string[], sessionId: string): Promise<number>;
+  renameNode(oldName: string, newName: string, sessionId?: string): Promise<number>;
+  deleteEdge(source: string, target: string, relation: string, sessionId?: string): Promise<number>;
   mergeSession(sourceId: string, targetId: string): Promise<void>;
 }
 
