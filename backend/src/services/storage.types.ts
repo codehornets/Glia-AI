@@ -9,6 +9,8 @@ export interface Session {
   hasFullChat: boolean;
   topicCount: number;
   externalChatId?: string;
+  tokensSaved?: number;
+  retrievalCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }

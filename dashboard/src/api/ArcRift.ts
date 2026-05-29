@@ -23,6 +23,8 @@ export async function fetchSessions() {
       tripleCount: number;
       topicCount?: number;
       hasFullChat?: boolean;
+      tokensSaved?: number;
+      retrievalCount?: number;
       createdAt: string;
       updatedAt: string;
     }[];
