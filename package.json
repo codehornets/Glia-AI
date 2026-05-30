@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "setup": "node bin/setup.js",
-    "dev:desktop": "start cmd /c \"cd backend && npm run dev\" && cd dashboard && npm run tauri dev"
+    "dev:desktop": "cd backend && npm run build && cd ../dashboard && npm run tauri dev"
   },
   "repository": {
     "type": "git",

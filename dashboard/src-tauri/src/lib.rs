@@ -31,9 +31,9 @@ pub fn run() {
                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
             let candidates = vec![
-                exe_dir.join("../../backend/dist/index.js"),  // dev (from dashboard/src-tauri/)
-                exe_dir.join("../backend/dist/index.js"),     // packaged build
-                exe_dir.join("backend/dist/index.js"),        // flat layout
+                exe_dir.join("../../../../backend/dist/index.js"), // dev mode (from dashboard/src-tauri/target/debug)
+                exe_dir.join("../backend/dist/index.js"),          // packaged build
+                exe_dir.join("backend/dist/index.js"),             // flat layout
             ];
 
             let backend_path = candidates.into_iter().find(|p| p.exists());
