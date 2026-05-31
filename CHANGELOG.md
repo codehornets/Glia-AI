@@ -4,6 +4,16 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ---
 
+## [1.6.1] — 2026-05-31 — Standalone Desktop Bundling
+
+This patch release hardens the Tauri Desktop installers, packaging the entire Node backend natively into the `.exe` so the application can run in highly protected environments like `C:\Program Files` without permission errors.
+
+### Major Features
+- **Standalone Node Bundling**: The Tauri `resources` array now natively bundles the compiled `esbuild` backend, meaning the application is now truly a monolithic application wrapper.
+- **Secure AppData Storage**: The Rust lifecycle manager intercepts the Node backend and reroutes the SQLite vector database to write directly to `%APPDATA%/dev.arcrift.app/ArcRift.db`. This permanently resolves write-permission crashes on Windows.
+
+---
+
 ## [1.6.0] — 2026-05-30 — Desktop App & Local File RAG
 
 This release marks ArcRift's transition from a CLI-based tool to a fully native, highly-optimized desktop application, alongside a brand new Local Codebase Indexing feature.

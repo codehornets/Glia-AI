@@ -12,7 +12,7 @@
 [![Stars](https://img.shields.io/github/stars/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=6366F1)](https://github.com/Eshaan-Nair/ARCRIFT/stargazers)
 [![Forks](https://img.shields.io/github/forks/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=06B6D4)](https://github.com/Eshaan-Nair/ARCRIFT/forks)
 [![Issues](https://img.shields.io/github/issues/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/ARCRIFT/issues)
-[![Version](https://img.shields.io/badge/version-1.6.0-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.1-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
 
 <br/>
@@ -81,7 +81,7 @@ ArcRift stops the cycle. It captures your AI conversations, extracts structured 
 - [Performance Benchmarks](#performance-benchmarks)
 - [Privacy and Security](#privacy-and-security)
 - [Comparison with Alternatives](#comparison-with-alternatives)
-- [What's New in v1.6.0](#whats-new-in-v160)
+- [What's New in v1.6.1](#whats-new-in-v161)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -683,7 +683,7 @@ While tools like Mem0, Zep, and Letta focus heavily on providing memory APIs for
 
 ---
 
-## What's New in v1.6.0
+## What's New in v1.6.1
 
 This release marks ArcRift's transition from a CLI-based tool to a fully native, highly-optimized desktop application, alongside a brand new Local Codebase Indexing feature.
 
@@ -692,7 +692,7 @@ This release marks ArcRift's transition from a CLI-based tool to a fully native,
 - **Esbuild Backend Engine**: The backend compiler was completely swapped from TypeScript to Esbuild, bringing start times down from over 60 seconds to ~0.1 seconds.
 - **GitHub Actions Auto-Releases**: Full CI/CD pipeline integrated to automatically cross-compile installers for Mac, Windows, and Linux on every release.
 
-*(Note: If you were testing `v1.5.7-beta` locally, all changes are included in this stable `v1.6.0` release).*
+*(Note: If you were testing `v1.6.0-beta` locally, all changes are included in this stable `v1.6.1` release).*
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

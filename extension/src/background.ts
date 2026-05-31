@@ -1,5 +1,5 @@
 /**
- * background.ts — v1.6.0
+ * background.ts — v1.6.1
  */
 
 import { ArcRiftMessage } from "./types/messages";

@@ -54,6 +54,9 @@ pub fn run() {
                     cmd.env("SQLITE_DB_PATH", db_path.to_str().unwrap());
                 }
 
+                // Force SQLite Zero-Docker mode for standalone desktop users
+                cmd.env("ARCRIFT_STORAGE_MODE", "sqlite");
+
                 // Suppress console window on Windows release builds
                 #[cfg(target_os = "windows")]
                 cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW

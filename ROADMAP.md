@@ -53,6 +53,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ## v1.6.1 — Released
 
+- **Standalone Backend Bundling** — Ensure the Tauri installers physically package the backend codebase and resolve SQLite write-permission issues by migrating data storage to OS AppData folders.
 - **Tauri Fixes** — Fixed issues with the Tauri app not working on Windows. Packaged with backend dependencies and code files.
 
 ---
