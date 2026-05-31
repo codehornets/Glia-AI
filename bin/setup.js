@@ -14,7 +14,7 @@ const REPO_URL = 'https://github.com/Eshaan-Nair/ARCRIFT.git';
 
 console.log(`
  ===================================
-   ArcRift v1.5.1 - Initializer
+   ArcRift v1.6.1 - Initializer
  ===================================
 `);
 
