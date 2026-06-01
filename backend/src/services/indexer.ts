@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import ignore from "ignore";
 import { logger } from "../utils/logger";
+import { scrubPII } from "../utils/privacy";
 import { WindowChunk } from "./chunker";
 import { vectorStore } from "./storage";
 
@@ -13,6 +14,12 @@ const DEFAULT_IGNORES = [
   "dist",
   "build",
   "coverage",
+  ".env",
+  ".env.*",
+  "*.pem",
+  "*.key",
+  "id_rsa",
+  "id_ed25519",
   "*.log",
   "*.sqlite",
   "*.db",
@@ -104,13 +111,14 @@ export async function indexCodebase(workspaceRoot: string, sessionId: string) {
             continue;
           }
           
-          const content = fs.readFileSync(absPath, "utf-8");
+          const rawContent = fs.readFileSync(absPath, "utf-8");
           // Skip if looks like binary (contains null bytes)
-          if (content.indexOf("\0") !== -1) {
+          if (rawContent.indexOf("\0") !== -1) {
             filesSkipped++;
             continue;
           }
 
+          const content = scrubPII(rawContent);
           const chunks = chunkCodeFile(content, relPath, sessionId);
           if (chunks.length > 0) {
             await vectorStore.storeFileChunks(chunks);
