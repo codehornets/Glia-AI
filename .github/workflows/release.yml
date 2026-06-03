@@ -112,6 +112,10 @@ jobs:
           npm run build
           npx web-ext build -s dist/chrome -a packages/chrome --overwrite-dest
           npx web-ext sign --channel unlisted --api-key=$MOZILLA_API_KEY --api-secret=$MOZILLA_API_SECRET -s dist/firefox -a packages/firefox
+          
+          # Rename the files for clearer asset names on GitHub Releases
+          mv packages/chrome/*.zip packages/chrome/chrome_extension.zip
+          mv packages/firefox/*.xpi packages/firefox/firefox_extension.xpi
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
