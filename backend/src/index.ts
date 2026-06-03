@@ -72,8 +72,8 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (chrome-extension, Postman, curl)
     if (!origin) return callback(null, true);
-    // Allow chrome-extension:// scheme
-    if (origin.startsWith("chrome-extension://")) return callback(null, true);
+    // Allow chrome-extension:// and moz-extension:// schemes
+    if (origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://")) return callback(null, true);
     // Allow any localhost origin (with or without port)
     if (origin.includes("://localhost") || origin.includes("://127.0.0.1")) return callback(null, true);
 
