@@ -12,7 +12,7 @@
 [![Stars](https://img.shields.io/github/stars/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=6366F1)](https://github.com/Eshaan-Nair/ARCRIFT/stargazers)
 [![Forks](https://img.shields.io/github/forks/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=06B6D4)](https://github.com/Eshaan-Nair/ARCRIFT/forks)
 [![Issues](https://img.shields.io/github/issues/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/ARCRIFT/issues)
-[![Version](https://img.shields.io/badge/version-1.6.1-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.2-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
 
 <br/>
@@ -81,7 +81,7 @@ ArcRift stops the cycle. It captures your AI conversations, extracts structured 
 - [Performance Benchmarks](#performance-benchmarks)
 - [Privacy and Security](#privacy-and-security)
 - [Comparison with Alternatives](#comparison-with-alternatives)
-- [What's New in v1.6.1](#whats-new-in-v161)
+- [What's New in v1.6.2](#whats-new-in-v162)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -119,66 +119,26 @@ This will start the backend seamlessly in the background and open the native Arc
 
 ### Web Extension Setup
 
-The extension requires the ArcRift backend to be running. It does not work standalone.
+The extension requires the ArcRift backend to be running. If you have the **ArcRift Desktop App** running in your system tray, you are already good to go!
 
-**Step 1 — Install and start the backend**
+**Step 1 — Install the Extension**
 
-```bash
-# One-command (recommended)
-npx arcrift-setup
+**For Google Chrome / Edge / Brave:**
+1. Download the Chrome `.zip` file from the [GitHub Releases](https://github.com/Eshaan-Nair/ArcRift/releases) page.
+2. Extract the `.zip` file to a permanent folder on your computer.
+3. Open `chrome://extensions`
+4. Enable **Developer mode** (top-right toggle)
+5. Click **Load unpacked** and select the folder you just extracted.
+6. The ArcRift icon will appear in your toolbar!
 
-# Or manual
-git clone https://github.com/Eshaan-Nair/ARCRIFT.git
-cd ARCRIFT/backend
-cp .env.example .env        # Edit .env — add GROQ_API_KEY if using Groq
-npm install
-```
+**For Mozilla Firefox:**
+1. Download the officially signed `.xpi` file from the [GitHub Releases](https://github.com/Eshaan-Nair/ArcRift/releases) page.
+2. Simply **drag and drop** the `.xpi` file directly into your open Firefox window.
+3. Click **Add** when prompted. It will be installed permanently!
 
-Set storage mode in `backend/.env`:
-```
-ARCRIFT_STORAGE_MODE=sqlite    # Recommended — no Docker needed
-OLLAMA_URL=http://localhost:11434
-GROQ_API_KEY=gsk_your_key_here
-```
-
-Start the backend:
-The easiest way is to simply launch your **ArcRift Desktop App** (which runs the backend natively). 
-
-Alternatively, if you are running in Headless/Developer mode:
-```bash
-# Windows
-start.bat
-
-# macOS / Linux
-./start.sh
-```
-
-The backend starts on `http://localhost:3001`. The extension will automatically connect to it.
-
-**Step 2 — Build the extension**
-
-```bash
-cd extension
-npm install
-npm run build
-```
-
-This produces the `extension/dist/` folder.
-
-**Step 3 — Load into Chrome**
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Select the `ARCRIFT/extension/dist` folder
-5. The ArcRift icon appears in your toolbar
-
-**Step 4 — Use it**
+**Step 2 — Use it**
 
 Navigate to Claude, ChatGPT, Gemini, DeepSeek, Grok, Copilot, or Mistral. Click the ArcRift popup, enter a project name, and click **Save Chat**. Auto-connect activates immediately.
-
-**Daily use:**
-Simply keep the **ArcRift Desktop App** running in your system tray! If you are in developer mode, double-click `start.bat` or `./start.sh`.
 
 ---
 
@@ -685,16 +645,14 @@ While tools like Mem0, Zep, and Letta focus heavily on providing memory APIs for
 
 ---
 
-## What's New in v1.6.1
+## What's New in v1.6.2
 
-This release marks ArcRift's transition from a CLI-based tool to a fully native, highly-optimized desktop application, alongside a brand new Local Codebase Indexing feature.
+This release brings full cross-browser support to ArcRift and patches a critical context injection bug.
 
-- **Native Tauri Desktop App**: ArcRift now runs as a lightweight native desktop application that lives quietly in your system tray. The backend operates seamlessly as a hidden Rust sidecar process, drastically improving performance and user experience.
-- **Direct Codebase Indexing**: You can now point ArcRift directly at any local folder. It will scan, chunk, embed, and ingest your entire codebase into its Knowledge Graph instantly, allowing you to query massive projects effortlessly.
-- **Esbuild Backend Engine**: The backend compiler was completely swapped from TypeScript to Esbuild, bringing start times down from over 60 seconds to ~0.1 seconds.
-- **GitHub Actions Auto-Releases**: Full CI/CD pipeline integrated to automatically cross-compile installers for Mac, Windows, and Linux on every release.
+- **Mozilla Firefox Support**: ArcRift is now fully compatible with Firefox! The extension build pipeline generates independent Chrome and Firefox packages, and we have fully automated the Mozilla Add-ons signing pipeline so signed `.xpi` extensions are attached to every release.
+- **RAG Hallucination Fix**: We caught a bug where out-of-context chats were injecting irrelevant project memory because the vector DB returned the top closest matches no matter how semantically distant they actually were. The retrieval pipeline now enforces a strict 50% relevance threshold.
 
-*(Note: If you were testing `v1.6.0-beta` locally, all changes are included in this stable `v1.6.1` release).*
+*(Note: If you were testing `v1.6.1` locally, all core desktop app updates remain the same in this release).*
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

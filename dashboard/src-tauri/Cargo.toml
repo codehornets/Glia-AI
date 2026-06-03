@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "1.6.1"
+version = "1.6.2"
 description = "ArcRift — Smart, local-first RAG and Knowledge Graph for AI conversations."
 authors = ["Eshaan Nair"]
 license = "MIT"
