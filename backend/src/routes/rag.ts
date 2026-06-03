@@ -42,7 +42,7 @@ router.post("/retrieve", async (req: Request, res: Response) => {
     // Retrieve a larger candidate pool for budgeting with Keyword Boosting
     const rawCandidateChunks = await vectorStore.retrieveRelevantChunks(prompt, sessionId, 10, entities);
 
-    // v1.6.1: Filter out low-relevance chunks to prevent hallucination
+    // v1.6.2: Filter out low-relevance chunks to prevent hallucination
     const RELEVANCE_THRESHOLD = 0.50;
     const candidateChunks = rawCandidateChunks.filter(c => (c.score || 0) >= RELEVANCE_THRESHOLD);
 
@@ -160,7 +160,7 @@ router.post("/global", async (req: Request, res: Response) => {
     // Retrieve a larger candidate pool with Keyword Boosting
     const rawCandidateChunks = await vectorStore.retrieveGlobalChunks(prompt, 8, entities);
 
-    // v1.6.1: Filter out low-relevance chunks to prevent hallucination
+    // v1.6.2: Filter out low-relevance chunks to prevent hallucination
     const RELEVANCE_THRESHOLD = 0.50;
     const candidateChunks = rawCandidateChunks.filter(c => (c.score || 0) >= RELEVANCE_THRESHOLD);
 

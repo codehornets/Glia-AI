@@ -4,6 +4,16 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ---
 
+## [1.6.2] — 2026-06-03 — Cross-Browser Extension Pipeline
+
+This release brings full cross-browser support to ArcRift and patches a critical context injection bug.
+
+### Major Features
+- **Mozilla Firefox Support**: ArcRift is now fully compatible with Firefox! The extension build pipeline generates independent Chrome and Firefox packages, and we have fully automated the Mozilla Add-ons signing pipeline so signed `.xpi` extensions are attached to every release.
+- **RAG Hallucination Fix**: We caught a bug where out-of-context chats were injecting irrelevant project memory because the vector DB returned the top closest matches no matter how semantically distant they actually were. The retrieval pipeline now enforces a strict 50% relevance threshold.
+
+---
+
 ## [1.6.1] — 2026-05-31 — Standalone Desktop Bundling
 
 This patch release hardens the Tauri Desktop installers, packaging the entire Node backend natively into the `.exe` so the application can run in highly protected environments like `C:\Program Files` without permission errors.
