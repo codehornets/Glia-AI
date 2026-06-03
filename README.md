@@ -12,7 +12,7 @@
 [![Stars](https://img.shields.io/github/stars/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=6366F1)](https://github.com/Eshaan-Nair/ARCRIFT/stargazers)
 [![Forks](https://img.shields.io/github/forks/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=06B6D4)](https://github.com/Eshaan-Nair/ARCRIFT/forks)
 [![Issues](https://img.shields.io/github/issues/Eshaan-Nair/ARCRIFT?style=for-the-badge&logo=github&labelColor=0B0E14&color=02C39A)](https://github.com/Eshaan-Nair/ARCRIFT/issues)
-[![Version](https://img.shields.io/badge/version-1.6.2-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.3-6366F1?style=for-the-badge&labelColor=0B0E14)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F8FAFC?style=for-the-badge&labelColor=0B0E14)](LICENSE)
 
 <br/>
@@ -81,7 +81,7 @@ ArcRift stops the cycle. It captures your AI conversations, extracts structured 
 - [Performance Benchmarks](#performance-benchmarks)
 - [Privacy and Security](#privacy-and-security)
 - [Comparison with Alternatives](#comparison-with-alternatives)
-- [What's New in v1.6.2](#whats-new-in-v162)
+- [What's New in v1.6.3](#whats-new-in-v162)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -645,7 +645,7 @@ While tools like Mem0, Zep, and Letta focus heavily on providing memory APIs for
 
 ---
 
-## What's New in v1.6.2
+## What's New in v1.6.3
 
 This release brings full cross-browser support to ArcRift and patches a critical context injection bug.
 

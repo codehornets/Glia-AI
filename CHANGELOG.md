@@ -4,7 +4,7 @@ All notable changes documented here. Format follows [Keep a Changelog](https://k
 
 ---
 
-## [1.6.2] — 2026-06-03 — Cross-Browser Extension Pipeline
+## [1.6.3] — 2026-06-03 — Cross-Browser Extension Pipeline
 
 This release brings full cross-browser support to ArcRift and patches a critical context injection bug.
 
