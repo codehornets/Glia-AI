@@ -66,6 +66,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",   // Vite dashboard (dev)
   "http://localhost:5174",   // Vite dashboard (dev alt)
   "http://localhost:4173",   // Vite dashboard (preview)
+  "http://tauri.localhost",
 ];
 
 app.use(cors({
