@@ -242,7 +242,7 @@ The HTTP backend and MCP server both use WAL mode on SQLite, which allows them t
 
 **Saving a conversation:**
 1. Have a conversation on any supported platform
-2. Click the ArcRift icon in the Chrome toolbar
+2. Click the ArcRift icon in your browser toolbar
 3. Enter a project name (e.g. `AuthService`, `MyApp-Backend`)
 4. Click **Save Chat**
 

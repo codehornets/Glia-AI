@@ -7,7 +7,6 @@ Completed items are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Icebox (No Fixed Version)
 
-- **Browser support beyond Chrome** — Firefox MV3 port.
 - **Cloud storage backend** — Optional Supabase or PocketBase backend for
   synced memory across machines, keeping the local-first default.
 - **Voice note capture** — Transcribe voice notes via Whisper and save them
@@ -51,16 +50,22 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ---
 
-## v1.6.3 — Released
+## v1.6.1 & v1.6.2 — Released
 
 - **Standalone Backend Bundling** — Ensure the Tauri installers physically package the backend codebase and resolve SQLite write-permission issues by migrating data storage to OS AppData folders.
 - **Tauri Fixes** — Fixed issues with the Tauri app not working on Windows. Packaged with backend dependencies and code files.
 
 ---
 
-## v1.6.3 — Planned (Major Release)
+## v1.6.3 — Released
 
-- **1. Team "Hive-Mind" Memory (Enterprise Sync)** — Optional remote database support (Turso/Postgres) allowing an entire engineering team to share a unified memory graph. If one developer solves an issue, the rest of the team's IDEs instantly recall the solution.
-- **2. Automated Memory Decay (Forgetting)** — Implementing an automated algorithmic "decay" system where outdated or conflicting facts slowly fade from the graph over time if they aren't frequently accessed or reinforced, keeping the memory retrieval lightning fast and contextually pure over years of use.
+- **Cross-Browser Support** — Successfully ported the Chrome extension to Firefox MV3 and set up an automated release pipeline for both browsers.
+
+---
+
+## v1.7.0 — Planned (Major Release)
+
+- **1. Automated Memory Decay (Forgetting)** — Implementing an automated algorithmic "decay" system (Spatial Graph Decay) where outdated or conflicting facts slowly fade from the graph over time if they aren't frequently accessed, keeping the memory retrieval lightning fast and contextually pure over years of use.
+- **2. Team "Hive-Mind" Memory (Enterprise Sync)** — Optional remote database support (Turso/Postgres) allowing an entire engineering team to share a unified memory graph. If one developer solves an issue, the rest of the team's IDEs instantly recall the solution.
 
 ---
